@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func getDeps() (port.Repository, port.TokenService, error) {
+func getDeps() (port.UserRepository, port.TokenService, error) {
 	db, err := storage.NewDBStorage(context.Background(), &config.Database{DSN: dbtest.DSN})
 	if err != nil {
 		return nil, nil, err
@@ -50,7 +50,7 @@ func getDeps() (port.Repository, port.TokenService, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	repo, err := repository.NewRepository(db)
+	repo, err := repository.NewUserRepository(db)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,7 +101,7 @@ func TestServiceDB_UserRegister(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s, err := service.NewService(repo, ts, logger)
+			s, err := service.NewUserService(repo, ts, logger)
 			assert.NoError(t, err)
 
 			result, err := s.RegisterUser(context.Background(), &test.user)
@@ -152,7 +152,7 @@ func TestServiceDB_UserLogin(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s, err := service.NewService(repo, ts, logger)
+			s, err := service.NewUserService(repo, ts, logger)
 			assert.NoError(t, err)
 
 			if test.registerUser {

@@ -36,7 +36,7 @@ db-stop:
 .PHONY: db-migration-new
 db-migration-new:
 	docker run --rm \
-    -v $(realpath ./internal/storage/migrations):/migrations \
+    -v $(realpath ./internal/adapter/storage/migrations):/migrations \
     migrate/migrate:v4.16.2 \
         create \
         -dir /migrations \
@@ -47,7 +47,7 @@ db-migration-new:
 .PHONY: db-migration-up
 db-migration-up:
 	docker run --rm \
-    -v $(realpath ./internal/storage/migrations):/migrations \
+    -v $(realpath ./internal/adapter/storage/migrations):/migrations \
 	--network host \
     migrate/migrate:v4.16.2 \
         -path=/migrations \
@@ -57,7 +57,7 @@ db-migration-up:
 .PHONY: db-migration-down
 db-migration-down:
 	docker run --rm \
-    -v $(realpath ./internal/storage/migrations):/migrations \
+    -v $(realpath ./internal/adapter/storage/migrations):/migrations \
 	--network host \
     migrate/migrate:v4.16.2 \
         -path=/migrations \

@@ -9,7 +9,7 @@ import (
 
 type UserHandler struct {
 	Handler
-	service port.Service
+	service port.IUserService
 }
 
 type UserRequest struct {
@@ -17,7 +17,7 @@ type UserRequest struct {
 	Password string `json:"password"`
 }
 
-func NewUserHandler(service port.Service, logger *zap.Logger) (*UserHandler, error) {
+func NewUserHandler(service port.IUserService, logger *zap.Logger) (*UserHandler, error) {
 	return &UserHandler{
 		Handler: Handler{logger: logger},
 		service: service}, nil

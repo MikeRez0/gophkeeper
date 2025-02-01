@@ -65,7 +65,7 @@ func TestService_UserRegister(t *testing.T) {
 			ts := mock.NewMockTokenService(mockCtrl)
 			test.mock(repo)
 
-			s, err := service.NewService(repo, ts, logger)
+			s, err := service.NewUserService(repo, ts, logger)
 			assert.NoError(t, err)
 
 			result, err := s.RegisterUser(context.Background(), &test.user)
@@ -131,7 +131,7 @@ func TestService_UserLogin(t *testing.T) {
 
 			test.mock(repo)
 
-			s, err := service.NewService(repo, ts, logger)
+			s, err := service.NewUserService(repo, ts, logger)
 			assert.NoError(t, err)
 
 			token, err := s.LoginUser(context.Background(), test.user.Login, test.user.Password)

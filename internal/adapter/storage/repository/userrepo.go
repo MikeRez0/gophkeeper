@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type Repository struct {
+type UserRepository struct {
 	db *storage.DB
 }
 
@@ -21,11 +21,11 @@ type queryAble interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
 
-func NewRepository(db *storage.DB) (*Repository, error) {
-	return &Repository{db: db}, nil
+func NewUserRepository(db *storage.DB) (*UserRepository, error) {
+	return &UserRepository{db: db}, nil
 }
 
-func (r *Repository) CreateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (r *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	err := pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
 		userSt := r.db.QueryBuilder.
 			Insert("users").
@@ -56,7 +56,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *domain.User) (*domain
 	return user, nil
 }
 
-func (r *Repository) selectUser(ctx context.Context, tx queryAble, login string, forUpdate bool) (*domain.User, error) {
+func (r *UserRepository) selectUser(ctx context.Context, tx queryAble, login string, forUpdate bool) (*domain.User, error) {
 	statement := r.db.QueryBuilder.
 		Select("id", "login", "password").
 		From("users").
@@ -88,6 +88,6 @@ func (r *Repository) selectUser(ctx context.Context, tx queryAble, login string,
 	return &user, nil
 }
 
-func (r *Repository) GetUserByLogin(ctx context.Context, login string) (*domain.User, error) {
+func (r *UserRepository) GetUserByLogin(ctx context.Context, login string) (*domain.User, error) {
 	return r.selectUser(ctx, r.db.Pool, login, false)
 }

@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	conf, err := config.NewConfig()
+	conf, err := config.NewConfigServer()
 	if err != nil {
 		fmt.Printf("config error:%s", err)
 		return
@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 
-	repo, err := repository.NewRepository(db)
+	repo, err := repository.NewUserRepository(db)
 	if err != nil {
 		log.Error("order repo creating error", zap.Error(err))
 		return
@@ -58,7 +58,7 @@ func main() {
 		return
 	}
 
-	svc, err := service.NewService(repo, tokenService, log.Named("Service"))
+	svc, err := service.NewUserService(repo, tokenService, log.Named("Service"))
 	if err != nil {
 		log.Error("order service creating error", zap.Error(err))
 		return

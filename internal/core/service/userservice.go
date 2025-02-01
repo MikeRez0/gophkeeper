@@ -10,21 +10,22 @@ import (
 	"go.uber.org/zap"
 )
 
-type Service struct {
-	repo         port.Repository
+type UserService struct {
+	repo         port.UserRepository
 	tokenService port.TokenService
 	logger       *zap.Logger
 }
 
-func NewService(repo port.Repository, tokenService port.TokenService, logger *zap.Logger) (*Service, error) {
-	return &Service{
+func NewUserService(repo port.UserRepository,
+	tokenService port.TokenService, logger *zap.Logger) (*UserService, error) {
+	return &UserService{
 		repo:         repo,
 		tokenService: tokenService,
 		logger:       logger,
 	}, nil
 }
 
-func (s *Service) RegisterUser(ctx context.Context, user *domain.User) (*domain.User, error) {
+func (s *UserService) RegisterUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	exUser, err := s.repo.GetUserByLogin(ctx, user.Login)
 	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
 		s.logger.Error("Get user", zap.Error(err))
@@ -52,7 +53,7 @@ func (s *Service) RegisterUser(ctx context.Context, user *domain.User) (*domain.
 	return newUser, nil
 }
 
-func (s *Service) LoginUser(ctx context.Context, login string, password string) (string, error) {
+func (s *UserService) LoginUser(ctx context.Context, login string, password string) (string, error) {
 	user, err := s.repo.GetUserByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, domain.ErrDataNotFound) {
