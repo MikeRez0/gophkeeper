@@ -8,20 +8,21 @@ import (
 )
 
 //go:generate mockgen -source=repository.go -destination=mock/repository.go -package=mock
-type UserRepository interface {
+type IUserRepository interface {
 	// User
 	CreateUser(ctx context.Context, user *domain.User) (*domain.User, error)
 	GetUserByLogin(ctx context.Context, login string) (*domain.User, error)
 }
 
-type KeyChainRepository interface {
+type IKeyChainRepository interface {
 	KeyChainInsert(context.Context, *domain.KCData) (*domain.KCData, error)
+	KeyChainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error)
 
 	KeyChainItemUpsert(context.Context, *domain.KCItemData) (*domain.KCItemData, error)
-	KeyChainItemSelect(context.Context, domain.KeyChainID, domain.KeyChainItemID) (*domain.KCItemData, error)
+	KeyChainItemSelect(context.Context, domain.KeychainID, domain.KeychainItemID) (*domain.KCItemData, error)
 
-	KeyChainGetItemsSince(ctx context.Context, keyChainID domain.KeyChainID,
-		since time.Time) (*[]domain.KCItemData, error)
-	KeyChainGetItemsFind(ctx context.Context, keyChainID domain.KeyChainID,
-		label string, metas []domain.KeyChainItemMeta) (*[]domain.KCItemData, error)
+	KeyChainGetItemsSince(ctx context.Context, keyChainID domain.KeychainID,
+		since time.Time) ([]*domain.KCItemData, error)
+	// KeyChainGetItemsFind(ctx context.Context, keyChainID domain.KeyChainID,
+	// 	label string, metas []domain.KeyChainItemMeta) ([]*domain.KCItemData, error)
 }

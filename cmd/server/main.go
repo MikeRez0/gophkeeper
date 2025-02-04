@@ -15,7 +15,29 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/service"
 )
 
+var buildVersion string
+var buildDate string
+var buildCommit string
+
+const cBuildInfoTemplate = `Server GophKeeper
+Build version: %s
+Build date: %s
+Build commit: %s
+`
+
 func main() {
+	if buildVersion == "" {
+		buildVersion = "N/A"
+	}
+	if buildDate == "" {
+		buildDate = "N/A"
+	}
+	if buildCommit == "" {
+		buildCommit = "N/A"
+	}
+
+	fmt.Printf(cBuildInfoTemplate, buildVersion, buildDate, buildCommit)
+
 	conf, err := config.NewConfigServer()
 	if err != nil {
 		fmt.Printf("config error:%s", err)
@@ -47,7 +69,7 @@ func main() {
 		return
 	}
 
-	repo, err := repository.NewUserRepository(db)
+	userRepo, err := repository.NewUserRepository(db)
 	if err != nil {
 		log.Error("order repo creating error", zap.Error(err))
 		return
@@ -58,19 +80,28 @@ func main() {
 		return
 	}
 
-	svc, err := service.NewUserService(repo, tokenService, log.Named("Service"))
+	userSrv, err := service.NewUserService(userRepo, tokenService, log.Named("UserService"))
 	if err != nil {
 		log.Error("order service creating error", zap.Error(err))
 		return
 	}
 
-	userHandler, err := http.NewUserHandler(svc, log.Named("User handler"))
+	userHandler, err := http.NewUserHandler(userSrv, log.Named("User handler"))
 	if err != nil {
 		log.Error("user handler creating error", zap.Error(err))
 		return
 	}
 
-	r, err := http.NewRouter(conf.HTTP, tokenService, userHandler, log.Named("Router"))
+	kcRepo, err := repository.NewKeychainRepository(db)
+	if err != nil {
+		log.Error("order repo creating error", zap.Error(err))
+		return
+	}
+	keychainSrv, err := service.NewKeychainService(kcRepo, log.Named("KeychainService"))
+
+	kHandler, err := http.NewKeychainHandler(keychainSrv, log.Named("Keychain handler"))
+
+	r, err := http.NewRouter(conf.HTTP, tokenService, userHandler, kHandler, log.Named("Router"))
 	if err != nil {
 		log.Error("router creating error", zap.Error(err))
 		return

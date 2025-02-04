@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func getDeps() (port.UserRepository, port.TokenService, error) {
+func getDeps() (port.IUserRepository, port.TokenService, error) {
 	db, err := storage.NewDBStorage(context.Background(), &config.Database{DSN: dbtest.DSN})
 	if err != nil {
 		return nil, nil, err

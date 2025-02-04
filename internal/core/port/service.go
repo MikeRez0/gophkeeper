@@ -12,13 +12,15 @@ type IUserService interface {
 	LoginUser(ctx context.Context, login string, password string) (string, error)
 }
 
-type IKeyChainDataService interface {
-	KeyChainCreate(ctx context.Context, owner domain.UserID) (*domain.KCData, error)
+type IKeychainDataService interface {
+	KeychainCreate(ctx context.Context, keychain *domain.KCData) (*domain.KCData, error)
+	KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error)
+	KeychainGet(ctx context.Context, user domain.UserID, keychainID domain.KeychainID) (*domain.KCData, error)
 
-	KeyChainSaveItem(ctx context.Context, item *domain.KCItemData) (*domain.KCItemData, error)
-	KeyChainGetItem(ctx context.Context, keyChainID domain.KeyChainID,
-		id domain.KeyChainItemID) (*domain.KCItemData, error)
+	KeychainSaveItem(ctx context.Context, user domain.UserID, item *domain.KCItemData) (*domain.KCItemData, error)
+	KeychainGetItem(ctx context.Context, user domain.UserID, keychainID domain.KeychainID,
+		id domain.KeychainItemID) (*domain.KCItemData, error)
 
-	KeyChainGetItemsSince(ctx context.Context, keyChainID domain.KeyChainID,
-		since time.Time) (*[]domain.KCItemData, error)
+	KeychainGetItemsSince(ctx context.Context, user domain.UserID, keychainID domain.KeychainID,
+		since time.Time) ([]*domain.KCItemData, error)
 }

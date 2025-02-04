@@ -16,6 +16,7 @@ func NewRouter(
 	conf *config.HTTP,
 	tokenService port.TokenService,
 	userHandler *UserHandler,
+	keychainHandler *KeychainHandler,
 	log *zap.Logger) (*Router, error) {
 	router := gin.New()
 
@@ -29,12 +30,20 @@ func NewRouter(
 		{
 			user.POST("/register", userHandler.RegisterUser)
 			user.POST("/login", userHandler.LoginUser)
+		}
 
-			orders := user.Group("/orders")
+		keychain := api.Group("/keychain")
+		{
+			keychain.Use(authCheck(tokenService, log))
+
+			keychain.GET("", keychainHandler.GetKeychainList)
+			keychain.POST("/:"+cKeychainParamName, keychainHandler.SaveKeychain)
+			keychain.GET("/:"+cKeychainParamName, keychainHandler.GetKeychain)
+			items := keychain.Group("/:" + cKeychainParamName)
 			{
-				orders.Use(authCheck(tokenService, log))
-				// orders.POST("", orderHandler.CreateOrder)
-				// orders.GET("", orderHandler.ListOrdersByUser)
+				items.GET("/item", keychainHandler.ListKeychainItems)
+				items.GET("/item/:"+cKeychainItemParamName, keychainHandler.GetKeychainItem)
+				items.POST("/item/:"+cKeychainItemParamName, keychainHandler.SaveKeychainItem)
 			}
 		}
 	}

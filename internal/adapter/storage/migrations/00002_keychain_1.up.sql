@@ -3,7 +3,8 @@ BEGIN TRANSACTION;
 -- CREATE TYPE OrderStatus as enum ('NEW', 'PROCESSING', 'PROCESSED', 'INVALID');
 CREATE TABLE
 	keychain (
-		id bigserial PRIMARY KEY,
+		id uuid PRIMARY KEY,
+		"name" varchar,
 		owner_id int8 NOT NULL,
 		create_at timestamp NOT NULL,
 		update_at timestamp NOT NULL,
@@ -12,8 +13,8 @@ CREATE TABLE
 
 CREATE TABLE
 	keychain_item (
-		id bigserial PRIMARY KEY,
-		keychain_id int8 NOT NULL,
+		id uuid PRIMARY KEY,
+		keychain_id uuid NOT NULL,
 		item_type int NOT NULL,
 		label varchar,
 		enc_key bytea,
@@ -25,7 +26,7 @@ CREATE TABLE
 
 CREATE TABLE
 	keychain_item_meta (
-		keychain_item_id int8,
+		keychain_item_id uuid,
 		k varchar,
 		v varchar,
 		PRIMARY key (keychain_item_id, k),

@@ -75,15 +75,15 @@ func NewConfigServer() (*ConfigServer, error) {
 
 	config.App.Mode = AppMode(*appModeStr)
 
-	err = env.Parse(&config.Database)
+	err = env.Parse(config.Database)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing env database config: %w", err)
 	}
-	err = env.Parse(&config.HTTP)
+	err = env.Parse(config.HTTP)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing http config: %w", err)
 	}
-	err = env.Parse(&config.App)
+	err = env.Parse(config.App)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing app config: %w", err)
 	}

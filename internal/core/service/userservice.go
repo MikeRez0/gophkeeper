@@ -11,12 +11,12 @@ import (
 )
 
 type UserService struct {
-	repo         port.UserRepository
+	repo         port.IUserRepository
 	tokenService port.TokenService
 	logger       *zap.Logger
 }
 
-func NewUserService(repo port.UserRepository,
+func NewUserService(repo port.IUserRepository,
 	tokenService port.TokenService, logger *zap.Logger) (*UserService, error) {
 	return &UserService{
 		repo:         repo,
