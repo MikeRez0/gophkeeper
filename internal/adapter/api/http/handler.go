@@ -67,7 +67,7 @@ func (h *Handler) handleError(ctx *gin.Context, err error) {
 // handleSuccess sends a success response with the specified status code and optional data.
 func (h *Handler) handleSuccessWithStatus(ctx *gin.Context, data any, status int) {
 	if data != nil {
-		ctx.JSON(http.StatusOK, data)
+		ctx.JSON(status, data)
 	} else {
 		ctx.Status(status)
 	}

@@ -2,7 +2,9 @@ package domain
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,8 +13,6 @@ import (
 type KeychainID uuid.UUID
 
 type KCData struct {
-	Created time.Time  `json:"created"`
-	Changed time.Time  `json:"changed"`
 	Name    string     `json:"name"`
 	ID      KeychainID `json:"id"`
 	OwnerID UserID     `json:"owner_id"`
@@ -42,8 +42,8 @@ type KeychainItemMeta map[string]string
 
 type KCItemData struct {
 	Label      string           `json:"label"`
-	Created    time.Time        `json:"created"`
-	Changed    time.Time        `json:"changed"`
+	ClientTime time.Time        `json:"client_time"`
+	ServerTime time.Time        `json:"server_time"`
 	MetaData   KeychainItemMeta `json:"meta"`
 	Value      []byte           `json:"value"`
 	Key        []byte           `json:"key"`
@@ -68,8 +68,26 @@ func (k *KeychainID) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", uuid.UUID(*k).String())), nil
 }
 
+func (k *KeychainID) UnmarshalJSON(b []byte) error {
+	u, err := uuid.Parse(strings.Trim(string(b), "\""))
+	if err != nil {
+		return errors.New("could not parse UUID")
+	}
+	*k = KeychainID(u)
+	return nil
+}
+
 func (k *KeychainItemID) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", uuid.UUID(*k).String())), nil
+}
+
+func (k *KeychainItemID) UnmarshalJSON(b []byte) error {
+	u, err := uuid.Parse(strings.Trim(string(b), "\""))
+	if err != nil {
+		return errors.New("could not parse UUID")
+	}
+	*k = KeychainItemID(u)
+	return nil
 }
 
 func (k KeychainItemID) Value() (driver.Value, error) {

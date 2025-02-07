@@ -16,13 +16,13 @@ type IUserRepository interface {
 
 type IKeyChainRepository interface {
 	KeyChainInsert(context.Context, *domain.KCData) (*domain.KCData, error)
+	KeyChainUpdate(context.Context, *domain.KCData) (*domain.KCData, error)
 	KeyChainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error)
+	KeyChainGet(ctx context.Context, keychainID domain.KeychainID) (*domain.KCData, error)
 
-	KeyChainItemUpsert(context.Context, *domain.KCItemData) (*domain.KCItemData, error)
+	KeyChainItemUpsert(context.Context, *domain.KCItemData) (*domain.KCItemData, bool, error)
 	KeyChainItemSelect(context.Context, domain.KeychainID, domain.KeychainItemID) (*domain.KCItemData, error)
 
 	KeyChainGetItemsSince(ctx context.Context, keyChainID domain.KeychainID,
 		since time.Time) ([]*domain.KCItemData, error)
-	// KeyChainGetItemsFind(ctx context.Context, keyChainID domain.KeyChainID,
-	// 	label string, metas []domain.KeyChainItemMeta) ([]*domain.KCItemData, error)
 }

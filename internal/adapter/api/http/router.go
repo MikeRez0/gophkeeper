@@ -41,6 +41,7 @@ func NewRouter(
 			keychain.GET("/:"+cKeychainParamName, keychainHandler.GetKeychain)
 			items := keychain.Group("/:" + cKeychainParamName)
 			{
+				items.POST("/sync", keychainHandler.Sync)
 				items.GET("/item", keychainHandler.ListKeychainItems)
 				items.GET("/item/:"+cKeychainItemParamName, keychainHandler.GetKeychainItem)
 				items.POST("/item/:"+cKeychainItemParamName, keychainHandler.SaveKeychainItem)

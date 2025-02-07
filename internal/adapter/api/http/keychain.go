@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
@@ -53,7 +54,7 @@ func (h *KeychainHandler) SaveKeychain(ctx *gin.Context) {
 		keychainID = domain.KeychainID(u)
 	}
 
-	k, err := h.service.KeychainCreate(ctx, &domain.KCData{
+	k, err := h.service.KeychainCreate(ctx, payload.UserID, &domain.KCData{
 		ID:      keychainID,
 		OwnerID: payload.UserID,
 	})
@@ -112,31 +113,25 @@ func (h *KeychainHandler) ListKeychainItems(ctx *gin.Context) {
 }
 
 type keychainItemStruct struct {
-	Label    *string                  `json:"label"`
-	MetaData *domain.KeychainItemMeta `json:"meta"`
-	Value    *[]byte                  `json:"value"`
-	Key      *[]byte                  `json:"key"`
-	ItemType *domain.KCItemType       `json:"type"`
-	Created  time.Time
-	Changed  time.Time
+	Label      *string                  `json:"label"`
+	MetaData   *domain.KeychainItemMeta `json:"meta"`
+	Value      *[]byte                  `json:"value"`
+	Key        *[]byte                  `json:"key"`
+	ItemType   *domain.KCItemType       `json:"type"`
+	ID         *domain.KeychainItemID   `json:"id"`
+	ClientTime *time.Time               `json:"client_time"`
 }
 
 func (h *KeychainHandler) SaveKeychainItem(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
-	var item domain.KCItemData
+	item := &domain.KCItemData{}
 
 	if u, err := parseUUIDParam(ctx, cKeychainParamName); err != nil {
 		h.handleValidationError(ctx, err)
 		return
 	} else {
 		item.KeyChainID = domain.KeychainID(u)
-	}
-	if u, err := parseUUIDParam(ctx, cKeychainItemParamName); err != nil {
-		h.handleValidationError(ctx, err)
-		return
-	} else {
-		item.ID = domain.KeychainItemID(u)
 	}
 
 	var reqItem keychainItemStruct
@@ -147,26 +142,26 @@ func (h *KeychainHandler) SaveKeychainItem(ctx *gin.Context) {
 		return
 	}
 
-	if reqItem.Label != nil {
-		item.Label = *reqItem.Label
-	}
-	if reqItem.Value != nil {
-		item.Value = *reqItem.Value
-	}
-	if reqItem.Key != nil {
-		item.Key = *reqItem.Key
-	}
-	if reqItem.ItemType != nil {
-		item.ItemType = *reqItem.ItemType
+	parseItemData(&reqItem, item)
+
+	if u, err := parseUUIDParam(ctx, cKeychainItemParamName); err != nil {
+		h.handleValidationError(ctx, err)
+		return
+	} else {
+		item.ID = domain.KeychainItemID(u)
 	}
 
-	pItem, err := h.service.KeychainSaveItem(ctx, payload.UserID, &item)
+	item, updated, err := h.service.KeychainSaveItem(ctx, payload.UserID, item)
 	if err != nil {
 		h.handleError(ctx, err)
 		return
 	}
 
-	h.handleSuccess(ctx, pItem)
+	if updated {
+		h.handleSuccess(ctx, item)
+	} else {
+		h.handleSuccessWithStatus(ctx, item, http.StatusFound)
+	}
 }
 
 func parseUUIDParam(ctx *gin.Context, name string) (uuid.UUID, error) {
@@ -179,6 +174,83 @@ func parseUUIDParam(ctx *gin.Context, name string) (uuid.UUID, error) {
 	} else {
 		return uuid.Nil, fmt.Errorf("%s is required", name)
 	}
+}
+
+func parseItemData(reqItem *keychainItemStruct, item *domain.KCItemData) {
+	if reqItem.Label != nil {
+		item.Label = *reqItem.Label
+	}
+	if reqItem.Value != nil {
+		item.Value = *reqItem.Value
+	}
+	if reqItem.Key != nil {
+		item.Key = *reqItem.Key
+	}
+	if reqItem.ItemType != nil {
+		item.ItemType = *reqItem.ItemType
+	}
+	if reqItem.MetaData != nil {
+		item.MetaData = *reqItem.MetaData
+	}
+	if !reqItem.ClientTime.IsZero() {
+		item.ClientTime = *reqItem.ClientTime
+	}
+	if reqItem.ID != nil {
+		item.ID = *reqItem.ID
+	}
+}
+
+func (h *KeychainHandler) Sync(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+
+	var (
+		keychainID domain.KeychainID
+	)
+
+	if u, err := parseUUIDParam(ctx, cKeychainParamName); err != nil {
+		h.handleValidationError(ctx, err)
+		return
+	} else {
+		keychainID = domain.KeychainID(u)
+	}
+
+	var fromTime time.Time
+
+	stime := ctx.Query("from_time")
+	if stime != "" {
+		if t, err := time.Parse(time.RFC3339, stime); err == nil {
+			fromTime = t
+		} else {
+			h.handleValidationError(ctx, fmt.Errorf("error parsing time: %w", err))
+			return
+		}
+	}
+
+	var itemsReq []keychainItemStruct
+
+	err := ctx.ShouldBindBodyWithJSON(&itemsReq)
+	if err != nil {
+		h.handleValidationError(ctx, err)
+		return
+	}
+
+	items := make([]*domain.KCItemData, 0, len(itemsReq))
+	serverTime := time.Now()
+	for _, itemReq := range itemsReq {
+		item := domain.KCItemData{}
+		item.KeyChainID = keychainID
+		parseItemData(&itemReq, &item)
+		item.ServerTime = serverTime
+		items = append(items, &item)
+	}
+
+	result, err := h.service.Sync(ctx, payload.UserID, keychainID, fromTime, items)
+	if err != nil {
+		h.handleError(ctx, err)
+		return
+	}
+
+	h.handleSuccess(ctx, result)
 }
 
 func (h *KeychainHandler) GetKeychainItem(ctx *gin.Context) {
