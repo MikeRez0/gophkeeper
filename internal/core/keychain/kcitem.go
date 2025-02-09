@@ -77,7 +77,7 @@ func newKeychainItemData(keychainID domain.KeychainID, itemType domain.KCItemTyp
 
 func (ki *KeychainItem) String() string {
 	return fmt.Sprintf(`Item: %s
-Metadata: %v`,
+Metadata: %v\n`,
 		ki.data.Label, ki.MetaData())
 }
 

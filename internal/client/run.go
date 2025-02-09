@@ -35,26 +35,32 @@ func Run() error {
 
 	kc := app.Keychains[0]
 	item := kc.NewItem(domain.KCItemTypePassword)
+	item.SetLabel("my site pass")
 	item.MetaDataSetItem(domain.KCMetaKeyComment, "my test comment")
 	item.MetaDataSetItem(domain.KCMetaKeyLogin, "admin")
 	item.MetaDataSetItem(domain.KCMetaKeySite, "google.com")
 
 	kc.Pass = "test"
 	p := "mysuper-puper-password"
-	kc.StoreSecret(item, []byte(p))
+	err = kc.StoreSecret(item, []byte(p))
+	if err != nil {
+		log.Error("error storing secret", zap.Error(err))
+		return err
+	}
 
 	for i, k := range app.Keychains {
-		fmt.Printf("Keychain %v: %v \n", i, k)
 
 		if err = app.SyncKeychain(k); err != nil {
 			log.Error("error syncing keychain", zap.Error(err))
 			return err
 		}
 
+		fmt.Printf("Keychain %v: %v \n", i, k)
+
 		for j, item := range k.Items {
 			s, err := k.GetSecret(item)
 			if err != nil {
-				log.Error("error reading secret: %w", zap.Error(err))
+				log.Error("error reading secret", zap.Error(err))
 			}
 
 			fmt.Printf("%d: %v\n", j, string(s))

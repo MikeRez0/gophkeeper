@@ -118,7 +118,10 @@ func (a *ClientApp) FetchKeychainList() error {
 	}
 
 	for _, kdata := range keychainList {
-		k := keychain.NewKeychain(&kdata)
+		k, err := keychain.NewKeychain(&kdata, a.Log)
+		if err != nil {
+			return fmt.Errorf("error creating keychain: %w", err)
+		}
 		a.Keychains = append(a.Keychains, k)
 	}
 
