@@ -9,14 +9,14 @@ import (
 )
 
 type Keychain struct {
-	data    *domain.KCData
 	Pass    string
-	Items   []*KeychainItem
-	IsDirty bool
-	keySize uint
 	enc     *encrypter.Encrypter
 	dec     *encrypter.Decrypter
 	log     *zap.Logger
+	data    *domain.KCData
+	Items   []*KeychainItem
+	keySize uint
+	IsDirty bool
 }
 
 const cKeySize = 32
@@ -53,7 +53,14 @@ func (kc *Keychain) NewItem(itemType domain.KCItemType) *KeychainItem {
 	return item
 }
 
-func (kc *Keychain) AppendItemFromData(data *domain.KCItemData) *KeychainItem {
+func (kc *Keychain) ApplyItemFromData(data *domain.KCItemData) *KeychainItem {
+	for _, item := range kc.Items {
+		if item.data.ID == data.ID {
+			item.data = data
+			item.changed = false
+			return item
+		}
+	}
 	item := newKeychainItemFromData(data)
 	kc.Items = append(kc.Items, item)
 	return item
@@ -74,7 +81,6 @@ func (kc *Keychain) StoreSecret(item *KeychainItem, secret []byte) error {
 }
 
 func (kc *Keychain) GetSecret(item *KeychainItem) ([]byte, error) {
-
 	secret, err := kc.dec.Decrypt(&encrypter.Envelope{
 		Key:  item.data.Key,
 		Data: item.data.Value,

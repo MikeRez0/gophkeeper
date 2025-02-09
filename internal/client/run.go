@@ -5,14 +5,13 @@ import (
 
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/logger"
-	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"go.uber.org/zap"
 )
 
 func Run() error {
 	conf, err := config.NewConfigClient()
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading config: %w", err)
 	}
 
 	log := logger.NewLogger(conf.App)
@@ -34,22 +33,21 @@ func Run() error {
 	}
 
 	kc := app.Keychains[0]
-	item := kc.NewItem(domain.KCItemTypePassword)
-	item.SetLabel("my site pass")
-	item.MetaDataSetItem(domain.KCMetaKeyComment, "my test comment")
-	item.MetaDataSetItem(domain.KCMetaKeyLogin, "admin")
-	item.MetaDataSetItem(domain.KCMetaKeySite, "google.com")
+	// item := kc.NewItem(domain.KCItemTypePassword)
+	// item.SetLabel("my site pass")
+	// item.MetaDataSetItem(domain.KCMetaKeyComment, "my test comment")
+	// item.MetaDataSetItem(domain.KCMetaKeyLogin, "admin")
+	// item.MetaDataSetItem(domain.KCMetaKeySite, "google.com")
 
-	kc.Pass = "test"
-	p := "mysuper-puper-password"
-	err = kc.StoreSecret(item, []byte(p))
-	if err != nil {
-		log.Error("error storing secret", zap.Error(err))
-		return err
-	}
+	kc.Pass = "test1"
+	// p := "mysuper-puper-password"
+	// err = kc.StoreSecret(item, []byte(p))
+	// if err != nil {
+	// 	log.Error("error storing secret", zap.Error(err))
+	// 	return err
+	// }
 
 	for i, k := range app.Keychains {
-
 		if err = app.SyncKeychain(k); err != nil {
 			log.Error("error syncing keychain", zap.Error(err))
 			return err

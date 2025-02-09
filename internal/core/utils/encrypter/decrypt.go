@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 
@@ -77,8 +78,9 @@ func getRandomBytes(n int) ([]byte, error) {
 }
 
 func getPassKey(pass []byte) []byte {
-	passKeyLen := (len(pass)/aes.BlockSize + 1) * aes.BlockSize
-	passKey := make([]byte, passKeyLen)
-	copy(passKey, pass)
+	hashp := sha256.Sum256(pass)
+	passKey := make([]byte, 32)
+	copy(passKey, hashp[:])
+
 	return passKey
 }

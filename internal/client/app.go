@@ -22,7 +22,6 @@ type ClientApp struct {
 }
 
 func NewApp(config *config.ConfigClient, log *zap.Logger) (*ClientApp, error) {
-
 	return &ClientApp{
 		config:     config,
 		Log:        log,
@@ -165,7 +164,7 @@ func (a *ClientApp) SyncKeychain(keychain *keychain.Keychain) error {
 	}
 
 	for _, i := range items {
-		keychain.AppendItemFromData(i)
+		keychain.ApplyItemFromData(i)
 	}
 
 	return nil

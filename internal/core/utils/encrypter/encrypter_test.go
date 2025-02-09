@@ -66,13 +66,16 @@ func TestEncrypt(t *testing.T) {
 
 	t.Run("big data", func(t *testing.T) {
 		testData := make([]byte, 1024*1024*1024)
+		bigPass := make([]byte, 1024)
 		_, err := rand.Read(testData)
 		assert.NoError(t, err)
-
-		env, err := enc.Encrypt(testData, []byte(testPass))
+		_, err = rand.Read(bigPass)
 		assert.NoError(t, err)
 
-		data, err := dec.Decrypt(env, []byte(testPass))
+		env, err := enc.Encrypt(testData, bigPass)
+		assert.NoError(t, err)
+
+		data, err := dec.Decrypt(env, bigPass)
 		assert.NoError(t, err)
 		assert.NotEqual(t, testData, env.Data)
 
