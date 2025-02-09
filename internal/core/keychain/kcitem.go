@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
+	"github.com/google/uuid"
 )
 
 type KeychainItem struct {
@@ -24,8 +25,7 @@ func newKeychainItem(kc *Keychain, itemType domain.KCItemType) *KeychainItem {
 }
 func newKeychainItemFromData(data *domain.KCItemData) *KeychainItem {
 	item := KeychainItem{
-		data:    data,
-		changed: true,
+		data: data,
 	}
 
 	return &item
@@ -51,6 +51,7 @@ func (ki *KeychainItem) MetaDataSetItem(key string, value string) {
 func (ki *KeychainItem) touch() {
 	ki.changed = true
 	ki.lastChange = time.Now()
+	ki.data.ClientTime = ki.lastChange
 }
 
 func newKeychainItemData(keychainID domain.KeychainID, itemType domain.KCItemType) *domain.KCItemData {
@@ -68,6 +69,7 @@ func newKeychainItemData(keychainID domain.KeychainID, itemType domain.KCItemTyp
 
 	return &domain.KCItemData{
 		KeyChainID: keychainID,
+		ID:         domain.KeychainItemID(uuid.New()),
 		ItemType:   itemType,
 		MetaData:   metas,
 	}
@@ -86,4 +88,12 @@ func (ki *KeychainItem) Label() string {
 func (ki *KeychainItem) SetLabel(label string) {
 	ki.data.Label = label
 	ki.touch()
+}
+
+func (ki *KeychainItem) Data() *domain.KCItemData {
+	return ki.data
+}
+
+func (ki *KeychainItem) IsChanged() bool {
+	return ki.changed
 }

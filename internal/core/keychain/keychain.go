@@ -61,3 +61,7 @@ func (kc *Keychain) GetSecret(item *KeychainItem) ([]byte, error) {
 
 	return secret, nil
 }
+
+func (kc *Keychain) Data() *domain.KCData {
+	return kc.data
+}

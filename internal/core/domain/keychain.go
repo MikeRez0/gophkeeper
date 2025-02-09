@@ -64,6 +64,10 @@ func (k KeychainID) Value() (driver.Value, error) {
 	return uuid.UUID(k).String(), nil
 }
 
+func (k KeychainID) String() string {
+	return uuid.UUID(k).String()
+}
+
 func (k *KeychainID) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", uuid.UUID(*k).String())), nil
 }
@@ -92,4 +96,8 @@ func (k *KeychainItemID) UnmarshalJSON(b []byte) error {
 
 func (k KeychainItemID) Value() (driver.Value, error) {
 	return uuid.UUID(k).String(), nil
+}
+
+func (k KeychainItemID) String() string {
+	return uuid.UUID(k).String()
 }

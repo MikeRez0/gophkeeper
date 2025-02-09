@@ -1,12 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"runtime"
 
-	"github.com/MikeRez0/gophkeeper/internal/core/domain"
-	"github.com/MikeRez0/gophkeeper/internal/core/keychain"
+	"github.com/MikeRez0/gophkeeper/internal/client"
 )
 
 var buildVersion string
@@ -31,22 +28,27 @@ func main() {
 		buildCommit = "N/A"
 	}
 
-	fmt.Printf(cBuildInfoTemplate, buildVersion, buildDate, buildCommit, runtime.GOOS, runtime.GOARCH)
-	kc := keychain.NewKeychain(nil)
-
-	item := kc.NewItem(domain.KCItemTypePassword)
-
-	// item.
-	item.MetaDataSetItem(domain.KCMetaKeyLogin, "admin")
-	item.MetaDataSetItem(domain.KCMetaKeySite, "google.com")
-
-	err := kc.StoreSecret(item, []byte("password"))
+	err := client.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
-	val, err := kc.GetSecret(kc.Items[0])
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("%v \nSecret: %s", kc.Items[0], val)
+
+	// fmt.Printf(cBuildInfoTemplate, buildVersion, buildDate, buildCommit, runtime.GOOS, runtime.GOARCH)
+	// kc := keychain.NewKeychain(nil)
+
+	// item := kc.NewItem(domain.KCItemTypePassword)
+
+	// // item.
+	// item.MetaDataSetItem(domain.KCMetaKeyLogin, "admin")
+	// item.MetaDataSetItem(domain.KCMetaKeySite, "google.com")
+
+	// err = kc.StoreSecret(item, []byte("password"))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// val, err := kc.GetSecret(kc.Items[0])
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Printf("%v \nSecret: %s", kc.Items[0], val)
 }

@@ -16,6 +16,7 @@ import (
 //	    "address": "localhost:8080", // аналог переменной окружения ADDRESS или флага -a
 //	}
 type ConfigClient struct {
+	App          *App     `json:"app"`
 	HostString   string   `env:"ADDRESS" json:"address"`
 	LogLevel     string   `env:"LOG_LEVEL"`
 	SyncInterval Duration `json:"sync_interval"` //env:"SYNC_INTERVAL"
@@ -27,10 +28,10 @@ type ConfigClient struct {
 func NewConfigClient() (*ConfigClient, error) {
 	// null config
 	config := ConfigClient{
+		App:          &App{LogLevel: "debug", Mode: AppModeDevelop},
 		HostString:   `localhost:8080`,
 		SyncInterval: Duration{2 * time.Second},
 		RateLimit:    3,
-		LogLevel:     "error",
 		GRPC:         false,
 	}
 
@@ -46,7 +47,7 @@ func NewConfigClient() (*ConfigClient, error) {
 	flag.BoolVar(&config.GRPC, "g", config.GRPC, "Enable gRPC Mode")
 	flag.IntVar(&syncInterval, "s", -1, "Sync interval")
 	flag.IntVar(&config.RateLimit, "l", config.RateLimit, "Rate limit")
-	flag.StringVar(&config.LogLevel, "log", config.LogLevel, "Log level")
+	flag.StringVar(&config.App.LogLevel, "log", config.App.LogLevel, "Log level")
 	flag.Parse()
 
 	if syncInterval != -1 {
