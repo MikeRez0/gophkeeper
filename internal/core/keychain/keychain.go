@@ -1,7 +1,9 @@
 package keychain
 
 import (
+	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/MikeRez0/gophkeeper/internal/core/utils/encrypter"
@@ -9,14 +11,14 @@ import (
 )
 
 type Keychain struct {
-	Pass    string
-	enc     *encrypter.Encrypter
-	dec     *encrypter.Decrypter
-	log     *zap.Logger
-	data    *domain.KCData
-	Items   []*KeychainItem
-	keySize uint
-	IsDirty bool
+	Pass     string
+	enc      *encrypter.Encrypter
+	dec      *encrypter.Decrypter
+	log      *zap.Logger
+	data     *domain.KCData
+	Items    []*KeychainItem
+	keySize  uint
+	SyncTime time.Time
 }
 
 const cKeySize = 32
@@ -67,7 +69,11 @@ func (kc *Keychain) ApplyItemFromData(data *domain.KCItemData) *KeychainItem {
 }
 
 func (kc *Keychain) StoreSecret(item *KeychainItem, secret []byte) error {
-	//TODO: Encryption
+	if oldSecret, err := kc.GetSecret(item); err != nil {
+		return err
+	} else if bytes.Equal(oldSecret, secret) {
+		return nil
+	}
 
 	env, err := kc.enc.Encrypt(secret, []byte(kc.Pass))
 	if err != nil {
@@ -77,10 +83,15 @@ func (kc *Keychain) StoreSecret(item *KeychainItem, secret []byte) error {
 	item.data.Value = env.Data
 	item.data.Key = env.Key
 
+	item.touch()
+
 	return nil
 }
 
 func (kc *Keychain) GetSecret(item *KeychainItem) ([]byte, error) {
+	if len(item.data.Value) == 0 {
+		return item.data.Value, nil
+	}
 	secret, err := kc.dec.Decrypt(&encrypter.Envelope{
 		Key:  item.data.Key,
 		Data: item.data.Value,

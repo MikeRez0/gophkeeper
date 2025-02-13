@@ -20,7 +20,7 @@ func NewRouter(
 	log *zap.Logger) (*Router, error) {
 	router := gin.New()
 
-	router.Use(logRequest(log))
+	router.Use(logRequest(log.WithOptions(zap.WithCaller(false))))
 
 	router.Use(gzip.Gzip(gzip.BestSpeed))
 

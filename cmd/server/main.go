@@ -92,7 +92,7 @@ func main() {
 		return
 	}
 
-	kcRepo, err := repository.NewKeychainRepository(db)
+	kcRepo, err := repository.NewKeychainPgRepository(db, log.Named("PgRepo"))
 	if err != nil {
 		log.Error("order repo creating error", zap.Error(err))
 		return

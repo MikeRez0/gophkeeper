@@ -50,29 +50,48 @@ func (ki *KeychainItem) MetaDataSetItem(key string, value string) {
 
 func (ki *KeychainItem) touch() {
 	ki.changed = true
-	ki.lastChange = time.Now()
+	ki.lastChange = time.Now().UTC()
 	ki.data.ClientTime = ki.lastChange
 }
 
-func newKeychainItemData(keychainID domain.KeychainID, itemType domain.KCItemType) *domain.KCItemData {
-	metas := make(domain.KeychainItemMeta, 5)
-	metas[domain.KCMetaKeyComment] = ""
-	switch itemType { //nolint:exhaustive // not all types have default meta values
-	case domain.KCItemTypePassword:
-		metas[domain.KCMetaKeyLogin] = ""
-		metas[domain.KCMetaKeySite] = ""
-	case domain.KCItemTypeCardNumber:
-		metas[domain.KCMetaKeyIssuer] = ""
-		metas[domain.KCMetaKeyOwner] = ""
-		metas[domain.KCMetaKeyValidTo] = ""
+func fillMetaData(item *domain.KCItemData) {
+	if item.MetaData == nil {
+		item.MetaData = make(domain.KeychainItemMeta, 5)
 	}
+	if _, ok := item.MetaData[domain.KCMetaKeyComment]; !ok {
+		item.MetaData[domain.KCMetaKeyComment] = ""
+	}
+	switch item.ItemType {
+	case domain.KCItemTypePassword:
+		if _, ok := item.MetaData[domain.KCMetaKeyLogin]; !ok {
+			item.MetaData[domain.KCMetaKeyLogin] = ""
+		}
+		if _, ok := item.MetaData[domain.KCMetaKeySite]; !ok {
+			item.MetaData[domain.KCMetaKeySite] = ""
+		}
+	case domain.KCItemTypeCardNumber:
+		if _, ok := item.MetaData[domain.KCMetaKeyIssuer]; !ok {
+			item.MetaData[domain.KCMetaKeyIssuer] = ""
+		}
+		if _, ok := item.MetaData[domain.KCMetaKeyOwner]; !ok {
+			item.MetaData[domain.KCMetaKeyOwner] = ""
+		}
+		if _, ok := item.MetaData[domain.KCMetaKeyValidTo]; !ok {
+			item.MetaData[domain.KCMetaKeyValidTo] = ""
+		}
+	}
+}
 
-	return &domain.KCItemData{
+func newKeychainItemData(keychainID domain.KeychainID, itemType domain.KCItemType) *domain.KCItemData {
+	item := domain.KCItemData{
 		KeyChainID: keychainID,
 		ID:         domain.KeychainItemID(uuid.New()),
 		ItemType:   itemType,
-		MetaData:   metas,
 	}
+
+	fillMetaData(&item)
+
+	return &item
 }
 
 func (ki *KeychainItem) String() string {
@@ -95,4 +114,10 @@ func (ki *KeychainItem) Data() *domain.KCItemData {
 
 func (ki *KeychainItem) IsChanged() bool {
 	return ki.changed
+}
+
+func (ki *KeychainItem) SetType(t domain.KCItemType) {
+	ki.data.ItemType = t
+	fillMetaData(ki.data)
+	ki.touch()
 }

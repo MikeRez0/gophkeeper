@@ -101,3 +101,26 @@ func (k KeychainItemID) Value() (driver.Value, error) {
 func (k KeychainItemID) String() string {
 	return uuid.UUID(k).String()
 }
+
+func (k KCItemType) String() string {
+	switch k {
+	case KCItemTypeBinary:
+		return "Binary data"
+	case KCItemTypeCardNumber:
+		return "Card number"
+	case KCItemTypePassword:
+		return "Login/pass"
+	case KCItemTypeString:
+		return "Secret text"
+	default:
+		return "Unknown item"
+	}
+}
+
+func KeyChainTypes() []string {
+	result := make([]string, 0, 5)
+	for i := 1; i < 5; i++ {
+		result = append(result, KCItemType(i).String())
+	}
+	return result
+}
