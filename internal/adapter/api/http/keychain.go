@@ -40,6 +40,10 @@ func (h *KeychainHandler) GetKeychainList(ctx *gin.Context) {
 	h.handleSuccess(ctx, list)
 }
 
+type keychainStruct struct {
+	Name string `json:"name"`
+}
+
 func (h *KeychainHandler) SaveKeychain(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
@@ -54,9 +58,16 @@ func (h *KeychainHandler) SaveKeychain(ctx *gin.Context) {
 		keychainID = domain.KeychainID(u)
 	}
 
+	keychainReq := &keychainStruct{}
+	if err := ctx.ShouldBindBodyWithJSON(keychainReq); err != nil {
+		h.handleValidationError(ctx, err)
+		return
+	}
+
 	k, err := h.service.KeychainCreate(ctx, payload.UserID, &domain.KCData{
 		ID:      keychainID,
 		OwnerID: payload.UserID,
+		Name:    keychainReq.Name,
 	})
 	if err != nil {
 		h.handleError(ctx, err)

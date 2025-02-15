@@ -7,6 +7,7 @@ import (
 
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/MikeRez0/gophkeeper/internal/core/utils/encrypter"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -17,6 +18,7 @@ type Keychain struct {
 	log      *zap.Logger
 	data     *domain.KCData
 	Items    []*KeychainItem
+	changed  bool
 	keySize  uint
 	SyncTime time.Time
 }
@@ -24,8 +26,13 @@ type Keychain struct {
 const cKeySize = 32
 
 func NewKeychain(data *domain.KCData, log *zap.Logger) (*Keychain, error) {
+	newKeychain := false
 	if data == nil {
-		data = &domain.KCData{}
+		data = &domain.KCData{
+			Name: "My keychain",
+			ID:   domain.KeychainID(uuid.New()),
+		}
+		newKeychain = true
 	}
 	enc, err := encrypter.NewEncrypter(log, cKeySize)
 	if err != nil {
@@ -42,6 +49,7 @@ func NewKeychain(data *domain.KCData, log *zap.Logger) (*Keychain, error) {
 		log:     log,
 		enc:     enc,
 		dec:     dec,
+		changed: newKeychain,
 	}, nil
 }
 
@@ -106,4 +114,8 @@ func (kc *Keychain) GetSecret(item *KeychainItem) ([]byte, error) {
 
 func (kc *Keychain) Data() *domain.KCData {
 	return kc.data
+}
+
+func (kc *Keychain) IsChanged() bool {
+	return kc.changed
 }

@@ -58,6 +58,13 @@ func fillMetaData(item *domain.KCItemData) {
 	if item.MetaData == nil {
 		item.MetaData = make(domain.KeychainItemMeta, 5)
 	}
+
+	for k, v := range item.MetaData {
+		if v == "" {
+			delete(item.MetaData, k)
+		}
+	}
+
 	if _, ok := item.MetaData[domain.KCMetaKeyComment]; !ok {
 		item.MetaData[domain.KCMetaKeyComment] = ""
 	}

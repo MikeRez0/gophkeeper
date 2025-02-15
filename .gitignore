@@ -23,8 +23,6 @@ vendor/
 .vscode
 
 
-.var
-
 #golangci-lint
 .golangci-lint/
 

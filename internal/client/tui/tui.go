@@ -11,6 +11,12 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	cPageKeychain  = "keychain"
+	cPageItemsList = "items"
+	cPageLogin     = "login"
+)
+
 type UIController struct {
 	log *zap.Logger
 	app *app.ClientApp
@@ -21,10 +27,14 @@ type UIController struct {
 	itemsList    *tview.List
 	itemForm     *tview.Form
 	passForm     *tview.Form
-	secretValue  []byte
+	loginForm    *tview.Form
+
+	login    string
+	password string
 
 	keychain     *keychain.Keychain
 	keychainItem *keychain.KeychainItem
+	secretValue  []byte
 }
 
 func NewUIController(app *app.ClientApp, log *zap.Logger) (*UIController, error) {
@@ -64,11 +74,34 @@ func (c *UIController) buildUI() {
 	c.passForm = tview.NewForm()
 	c.passForm.SetBorder(true)
 
+	c.loginForm = tview.NewForm()
+	c.loginForm.SetBorder(true)
+
 	pKeychain := tview.NewGrid().
 		AddItem(c.keychainList, 0, 0, 11, 2, 0, 10, true).
 		AddItem(c.passForm, 0, 2, 11, 10, 0, 15, true).
 		AddItem(tview.NewTextView().SetText("(Q) - quit (S) - sync"),
 			11, 0, 1, 12, 1, 0, false)
+
+	pKeychain.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch {
+		case event.Rune() == 'q':
+			if c.keychainList.HasFocus() {
+				c.uiapp.Stop()
+			}
+		case event.Rune() == 's':
+			if c.itemsList.HasFocus() || c.keychainList.HasFocus() {
+				err := c.app.SyncKeychain(c.keychain)
+				if err != nil {
+					c.log.Error("sync error", zap.Error(err))
+				}
+				if c.keychain != nil {
+					c.showItems()
+				}
+			}
+		}
+		return event
+	})
 
 	pItems := tview.NewGrid().
 		AddItem(c.keychainList, 0, 0, 11, 2, 0, 10, false).
@@ -80,7 +113,9 @@ func (c *UIController) buildUI() {
 	pItems.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch {
 		case event.Rune() == 'q':
-			c.uiapp.Stop()
+			if c.itemsList.HasFocus() {
+				c.uiapp.Stop()
+			}
 		case event.Rune() == 'a':
 			if c.itemsList.HasFocus() {
 				c.keychainItem = c.keychain.NewItem(domain.KCItemTypePassword)
@@ -106,8 +141,9 @@ func (c *UIController) buildUI() {
 		return event
 	})
 
-	c.pages.AddPage("keychain", pKeychain, true, false)
-	c.pages.AddPage("items", pItems, true, false)
+	c.pages.AddPage(cPageLogin, c.loginForm, true, false)
+	c.pages.AddPage(cPageKeychain, pKeychain, true, false)
+	c.pages.AddPage(cPageItemsList, pItems, true, false)
 }
 
 func (c *UIController) showKeychainList() {
@@ -131,7 +167,7 @@ func (c *UIController) showKeychainList() {
 	}
 
 	c.keychainList.SetCurrentItem(selected)
-	c.pages.SwitchToPage("keychain")
+	c.pages.SwitchToPage(cPageKeychain)
 	c.refresh()
 	c.uiapp.SetFocus(c.keychainList)
 }
@@ -163,13 +199,6 @@ func (c *UIController) showItemForm() {
 	item := c.keychainItem
 
 	if secret, err := c.keychain.GetSecret(c.keychainItem); err == nil {
-		c.secretValue = secret
-		c.itemForm.AddInputField("Secret",
-			string(c.secretValue),
-			40,
-			nil, func(text string) {
-				c.secretValue = []byte(text)
-			})
 		c.itemForm.AddInputField("Label",
 			item.Label(), 40, nil,
 			func(text string) {
@@ -194,6 +223,14 @@ func (c *UIController) showItemForm() {
 			c.keychainItem = nil
 			c.showItems()
 		})
+
+		c.secretValue = secret
+		c.itemForm.AddInputField("Secret",
+			string(c.secretValue),
+			40,
+			nil, func(text string) {
+				c.secretValue = []byte(text)
+			})
 	} else {
 		c.itemForm.AddTextView("Error", "Wrong pass key", 30, 1, false, false)
 		c.itemForm.AddButton("OK", func() {
@@ -233,16 +270,79 @@ func (c *UIController) requestPass() {
 	c.passForm.AddButton("Cancel", func() {
 		c.passForm.Clear(true)
 		c.keychain.Pass = ""
-		c.pages.SwitchToPage("keychain")
+		c.showKeychainList()
 	})
 
 	c.uiapp.SetFocus(c.passForm)
 }
 
+func (c *UIController) showLoginForm() {
+	c.loginForm.Clear(true)
+
+	c.loginForm.AddInputField(
+		"Login",
+		c.login, 20,
+		nil,
+		func(text string) {
+			c.login = text
+		},
+	)
+
+	c.loginForm.AddPasswordField(
+		"Password",
+		c.password, 20,
+		'*',
+		func(text string) {
+			c.password = text
+		},
+	)
+
+	c.loginForm.AddButton("Login",
+		func() {
+			err := c.app.Connect(c.login, c.password)
+			if err != nil {
+				c.log.Error("connection error", zap.Error(err))
+				return
+			}
+			err = c.app.FetchKeychainList()
+			if err != nil {
+				c.log.Error("fetch keychain list error", zap.Error(err))
+				return
+			}
+			err = c.app.SyncKeychain(nil)
+			if err != nil {
+				c.log.Error("sync keychain error", zap.Error(err))
+				return
+			}
+
+			c.showKeychainList()
+		})
+
+	c.loginForm.AddButton("Register",
+		func() {
+			err := c.app.RegisterUser(c.login, c.password)
+			if err != nil {
+				c.log.Error("registration error", zap.Error(err))
+				return
+			}
+
+			k, err := keychain.NewKeychain(nil, c.app.Log)
+			if err != nil {
+				c.log.Error("error creation keychain", zap.Error(err))
+				return
+			}
+			c.app.Keychains = append(c.app.Keychains, k)
+
+			c.showKeychainList()
+		})
+
+	c.uiapp.SetFocus(c.loginForm)
+}
+
 func (c *UIController) Run() error {
 	c.buildUI()
-	c.pages.SwitchToPage("keychain")
-	c.showKeychainList()
+	c.pages.SwitchToPage(cPageLogin)
+	c.showLoginForm()
 
 	if err := c.uiapp.SetRoot(c.pages, true).EnableMouse(false).Run(); err != nil {
 		return fmt.Errorf("error in UI app: %w", err)

@@ -2,5 +2,6 @@
 
 ## Начало работы
 
-1. Run server `./server -p=3000 -d="postgres://user:pass@localhost:5432/gophkeeper"`
-1. Run client `./client -a="localhost:3000"`
+0. Start database `make db-start`
+1. Run server `go run cmd/server/main.go -c=.var/conf/server.cfg`
+2. Run client `go run cmd/client/main.go -c=.var/conf/client.cfg`
