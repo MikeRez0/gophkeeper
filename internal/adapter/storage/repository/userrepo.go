@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/storage"
@@ -22,6 +23,9 @@ type queryAble interface {
 }
 
 func NewUserRepository(db *storage.DB) (*UserRepository, error) {
+	if db == nil {
+		return nil, errors.New("nil not allowed as argument")
+	}
 	return &UserRepository{db: db}, nil
 }
 

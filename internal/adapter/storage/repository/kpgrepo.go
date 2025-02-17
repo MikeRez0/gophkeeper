@@ -22,6 +22,9 @@ type KeychainPgRepository struct {
 }
 
 func NewKeychainPgRepository(db *storage.DB, log *zap.Logger) (*KeychainPgRepository, error) {
+	if db == nil || log == nil {
+		return nil, errors.New("nil not allowed as argument")
+	}
 	return &KeychainPgRepository{db: db, log: log}, nil
 }
 
