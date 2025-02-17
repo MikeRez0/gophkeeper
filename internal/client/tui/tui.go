@@ -28,6 +28,7 @@ type UIController struct {
 	itemForm     *tview.Form
 	passForm     *tview.Form
 	loginForm    *tview.Form
+	logView      *tview.TextView
 
 	login    string
 	password string
@@ -77,11 +78,19 @@ func (c *UIController) buildUI() {
 	c.loginForm = tview.NewForm()
 	c.loginForm.SetBorder(true)
 
+	c.logView = tview.NewTextView()
+	c.logView.SetBorder(true)
+
+	pLogin := tview.NewGrid().
+		AddItem(c.loginForm, 3, 3, 6, 3, 10, 15, true).
+		AddItem(c.logView, 12, 0, 1, 12, 1, 30, true)
+
 	pKeychain := tview.NewGrid().
-		AddItem(c.keychainList, 0, 0, 11, 2, 0, 10, true).
-		AddItem(c.passForm, 0, 2, 11, 10, 0, 15, true).
+		AddItem(c.keychainList, 0, 0, 9, 2, 8, 10, true).
+		AddItem(c.passForm, 0, 2, 9, 10, 8, 15, true).
+		AddItem(c.logView, 9, 0, 2, 12, 2, 0, true).
 		AddItem(tview.NewTextView().SetText("(Q) - quit (S) - sync"),
-			11, 0, 1, 12, 1, 0, false)
+			11, 0, 1, 12, 0, 0, false)
 
 	pKeychain.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch {
@@ -94,6 +103,9 @@ func (c *UIController) buildUI() {
 				err := c.app.SyncKeychain(c.keychain)
 				if err != nil {
 					c.log.Error("sync error", zap.Error(err))
+					c.writeLog("sync error", err)
+				} else {
+					c.writeLog("successfull synced", nil)
 				}
 				if c.keychain != nil {
 					c.showItems()
@@ -104,11 +116,12 @@ func (c *UIController) buildUI() {
 	})
 
 	pItems := tview.NewGrid().
-		AddItem(c.keychainList, 0, 0, 11, 2, 0, 10, false).
-		AddItem(c.itemsList, 0, 2, 11, 4, 0, 15, true).
-		AddItem(c.itemForm, 0, 6, 11, 6, 0, 30, true).
+		AddItem(c.keychainList, 0, 0, 9, 2, 8, 10, false).
+		AddItem(c.itemsList, 0, 2, 9, 4, 8, 15, true).
+		AddItem(c.itemForm, 0, 6, 9, 6, 8, 30, true).
+		AddItem(c.logView, 9, 0, 2, 12, 2, 0, true).
 		AddItem(tview.NewTextView().SetText("(A) - add item (Q) - quit (S) - sync"),
-			11, 0, 1, 12, 1, 0, false)
+			11, 0, 1, 12, 0, 0, false)
 
 	pItems.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch {
@@ -125,7 +138,9 @@ func (c *UIController) buildUI() {
 			if c.itemsList.HasFocus() || c.keychainList.HasFocus() {
 				err := c.app.SyncKeychain(c.keychain)
 				if err != nil {
-					c.log.Error("sync error", zap.Error(err))
+					c.writeLog("sync error", err)
+				} else {
+					c.writeLog("successfull synced", nil)
 				}
 				if c.keychain != nil {
 					c.showItems()
@@ -141,7 +156,7 @@ func (c *UIController) buildUI() {
 		return event
 	})
 
-	c.pages.AddPage(cPageLogin, c.loginForm, true, false)
+	c.pages.AddPage(cPageLogin, pLogin, true, false)
 	c.pages.AddPage(cPageKeychain, pKeychain, true, false)
 	c.pages.AddPage(cPageItemsList, pItems, true, false)
 }
@@ -232,6 +247,7 @@ func (c *UIController) showItemForm() {
 				c.secretValue = []byte(text)
 			})
 	} else {
+		c.writeLog("error reading secret", err)
 		c.itemForm.AddTextView("Error", "Wrong pass key", 30, 1, false, false)
 		c.itemForm.AddButton("OK", func() {
 			c.secretValue = nil
@@ -301,17 +317,17 @@ func (c *UIController) showLoginForm() {
 		func() {
 			err := c.app.Connect(c.login, c.password)
 			if err != nil {
-				c.log.Error("connection error", zap.Error(err))
+				c.writeLog("connection error", err)
 				return
 			}
 			err = c.app.FetchKeychainList()
 			if err != nil {
-				c.log.Error("fetch keychain list error", zap.Error(err))
+				c.writeLog("fetch keychain list error", err)
 				return
 			}
 			err = c.app.SyncKeychain(nil)
 			if err != nil {
-				c.log.Error("sync keychain error", zap.Error(err))
+				c.writeLog("sync keychain error", err)
 				return
 			}
 
@@ -322,13 +338,13 @@ func (c *UIController) showLoginForm() {
 		func() {
 			err := c.app.RegisterUser(c.login, c.password)
 			if err != nil {
-				c.log.Error("registration error", zap.Error(err))
+				c.writeLog("registration error", err)
 				return
 			}
 
 			k, err := keychain.NewKeychain(nil, c.app.Log)
 			if err != nil {
-				c.log.Error("error creation keychain", zap.Error(err))
+				c.writeLog("error creation keychain", err)
 				return
 			}
 			c.app.Keychains = append(c.app.Keychains, k)
@@ -337,6 +353,16 @@ func (c *UIController) showLoginForm() {
 		})
 
 	c.uiapp.SetFocus(c.loginForm)
+}
+
+func (c *UIController) writeLog(message string, err error) {
+	if err != nil {
+		c.log.Error(message, zap.Error(err))
+		_, _ = fmt.Fprintf(c.logView, "%s: %v\n", message, err)
+	} else {
+		_, _ = fmt.Fprintln(c.logView, message)
+	}
+	c.logView.ScrollToEnd()
 }
 
 func (c *UIController) Run() error {
