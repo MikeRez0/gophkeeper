@@ -2,10 +2,12 @@ package keychain
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
+	"github.com/MikeRez0/gophkeeper/internal/core/port"
 	"github.com/MikeRez0/gophkeeper/internal/core/utils/encrypter"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -21,6 +23,7 @@ type Keychain struct {
 	changed  bool
 	keySize  uint
 	SyncTime time.Time
+	repo     port.IKeychainRepository
 }
 
 const cKeySize = 32
@@ -118,4 +121,26 @@ func (kc *Keychain) Data() *domain.KCData {
 
 func (kc *Keychain) IsChanged() bool {
 	return kc.changed
+}
+
+func (kc *Keychain) Save(ctx context.Context) error {
+	if kc.IsChanged() {
+		_, err := kc.repo.KeychainUpsert(ctx, kc.Data())
+		if err != nil {
+			return fmt.Errorf("error keychain upsert: %w", err)
+		}
+		kc.changed = false
+	}
+
+	for _, i := range kc.Items {
+		if i.IsChanged() {
+			_, _, err := kc.repo.KeychainItemUpsert(ctx, i.Data())
+			if err != nil {
+				return fmt.Errorf("error keychain item upsert: %w", err)
+			}
+			i.changed = false
+		}
+	}
+
+	return nil
 }

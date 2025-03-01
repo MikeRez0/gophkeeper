@@ -68,6 +68,16 @@ func (k KeychainID) String() string {
 	return uuid.UUID(k).String()
 }
 
+func (k *KeychainID) Scan(value interface{}) error {
+	u := uuid.UUID(*k)
+	err := u.Scan(value)
+	if err != nil {
+		return err
+	}
+	*k = KeychainID(u)
+	return nil
+}
+
 func (k *KeychainID) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", uuid.UUID(*k).String())), nil
 }
@@ -100,6 +110,16 @@ func (k KeychainItemID) Value() (driver.Value, error) {
 
 func (k KeychainItemID) String() string {
 	return uuid.UUID(k).String()
+}
+
+func (k *KeychainItemID) Scan(value interface{}) error {
+	u := uuid.UUID(*k)
+	err := u.Scan(value)
+	if err != nil {
+		return err
+	}
+	*k = KeychainItemID(u)
+	return nil
 }
 
 func (k KCItemType) String() string {

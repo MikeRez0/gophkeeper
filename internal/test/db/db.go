@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -23,7 +24,7 @@ type TestDBInstance struct {
 	DSN        string
 }
 
-func NewTestDBInstance() (*TestDBInstance, error) {
+func NewTestDBInstance(port int) (*TestDBInstance, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize a pool: %w", err)
@@ -33,14 +34,14 @@ func NewTestDBInstance() (*TestDBInstance, error) {
 		&dockertest.RunOptions{
 			Repository: "postgres",
 			Tag:        "15.3",
-			Name:       "database-test",
+			Name:       "database-test-" + strconv.Itoa(port),
 			Env: []string{
 				"POSTGRES_USER=postgres",
 				"POSTGRES_PASSWORD=postgres",
 			},
 			ExposedPorts: []string{"5432"},
 			PortBindings: map[docker.Port][]docker.PortBinding{
-				docker.Port("5432"): {docker.PortBinding{HostPort: "50000"}},
+				docker.Port("5432"): {docker.PortBinding{HostPort: strconv.Itoa(port)}},
 			},
 		},
 		func(config *docker.HostConfig) {

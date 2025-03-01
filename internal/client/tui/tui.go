@@ -133,6 +133,7 @@ func (c *UIController) buildUI() {
 			if c.itemsList.HasFocus() {
 				c.keychainItem = c.keychain.NewItem(domain.KCItemTypePassword)
 				c.showItemForm()
+				return nil
 			}
 		case event.Rune() == 's':
 			if c.itemsList.HasFocus() || c.keychainList.HasFocus() {

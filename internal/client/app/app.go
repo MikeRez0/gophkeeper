@@ -32,7 +32,7 @@ func NewApp(config *config.ConfigClient, log *zap.Logger) (*ClientApp, error) {
 }
 
 func (a *ClientApp) Connect(login, password string) error {
-	data, err := a.fetch(
+	data, err := a.doRequest(
 		"/api/user/login",
 		http.MethodPost,
 		map[string]string{"login": login, "password": password})
@@ -54,7 +54,7 @@ func (a *ClientApp) Connect(login, password string) error {
 }
 
 func (a *ClientApp) RegisterUser(login, password string) error {
-	data, err := a.fetch(
+	data, err := a.doRequest(
 		"/api/user/register",
 		http.MethodPost,
 		map[string]string{"login": login, "password": password})
@@ -75,7 +75,7 @@ func (a *ClientApp) RegisterUser(login, password string) error {
 	return nil
 }
 
-func (a *ClientApp) fetch(path string, method string, data any) ([]byte, error) {
+func (a *ClientApp) doRequest(path string, method string, data any) ([]byte, error) {
 	requestStr := a.serverHost + path
 
 	var (
@@ -117,7 +117,7 @@ func (a *ClientApp) fetch(path string, method string, data any) ([]byte, error) 
 	return result, nil
 }
 func (a *ClientApp) FetchKeychainList() error {
-	data, err := a.fetch("/api/keychain", http.MethodGet, nil)
+	data, err := a.doRequest("/api/keychain", http.MethodGet, nil)
 	if err != nil {
 		return fmt.Errorf("error requesting keychain list : %w", err)
 	}
@@ -152,7 +152,7 @@ func (a *ClientApp) SyncKeychain(keychain *keychain.Keychain) error {
 	}
 
 	if keychain.IsChanged() {
-		_, err := a.fetch(
+		_, err := a.doRequest(
 			"/api/keychain/"+keychain.Data().ID.String(),
 			http.MethodPost,
 			keychain.Data())
@@ -164,7 +164,7 @@ func (a *ClientApp) SyncKeychain(keychain *keychain.Keychain) error {
 
 	items := make([]*domain.KCItemData, 0)
 	for _, i := range keychain.Items {
-		if i.IsChanged() {
+		if i.Data().ClientTime.Compare(keychain.SyncTime) >= 0 {
 			items = append(items, i.Data())
 		}
 	}
@@ -176,7 +176,7 @@ func (a *ClientApp) SyncKeychain(keychain *keychain.Keychain) error {
 	}
 	keychain.SyncTime = t
 
-	data, err := a.fetch(
+	data, err := a.doRequest(
 		"/api/keychain/"+keychain.Data().ID.String()+"/sync"+query,
 		http.MethodPost,
 		items,

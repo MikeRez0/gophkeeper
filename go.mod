@@ -80,6 +80,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v5 v5.7.2
+	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/multierr v1.10.0 // indirect

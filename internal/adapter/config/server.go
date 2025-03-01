@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/caarlos0/env/v6"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // ConfigServer - config params for server.
@@ -29,17 +30,13 @@ type ConfigServer struct {
 	App      *App      `json:"app"`
 }
 
-type Database struct {
-	DSN string `env:"DATABASE_URI" json:"database_dsn"`
-}
-
 type HTTP struct {
 	HostString string `env:"RUN_ADDRESS" json:"address"`
 }
 
 func NewConfigServer() (*ConfigServer, error) {
 	config := ConfigServer{
-		Database: &Database{},
+		Database: &Database{Driver: "sqlite3"},
 		HTTP: &HTTP{
 			HostString: `localhost:8080`,
 		},
@@ -56,6 +53,7 @@ func NewConfigServer() (*ConfigServer, error) {
 
 	flag.String("c", "", cConfigFilenameUsage)
 	flag.StringVar(&config.Database.DSN, "d", config.Database.DSN, "Database string")
+	flag.StringVar(&config.Database.Driver, "i", config.Database.Driver, "Database driver")
 	flag.StringVar(&config.HTTP.HostString, "a", config.HTTP.HostString, "HTTP server endpoint")
 	flag.StringVar(&config.App.LogLevel, "l", config.App.LogLevel, "Log level")
 	appModeStr := flag.String("m", string(config.App.Mode), "PROD / DEV")

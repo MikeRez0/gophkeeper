@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/MikeRez0/gophkeeper/internal/adapter/auth"
-	"github.com/MikeRez0/gophkeeper/internal/adapter/storage/repository"
+	"github.com/MikeRez0/gophkeeper/internal/adapter/storage/pgsql"
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/MikeRez0/gophkeeper/internal/core/port"
 	"github.com/MikeRez0/gophkeeper/internal/core/service"
@@ -20,7 +20,7 @@ func getUserDeps() (port.IUserRepository, port.TokenService, error) {
 		return nil, nil, err
 	}
 
-	repo, err := repository.NewUserRepository(db)
+	repo, err := pgsql.NewUserRepository(db)
 	if err != nil {
 		return nil, nil, err
 	}

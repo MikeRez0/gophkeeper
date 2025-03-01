@@ -6,7 +6,7 @@ import (
 
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/logger"
-	"github.com/MikeRez0/gophkeeper/internal/adapter/storage/repository"
+	"github.com/MikeRez0/gophkeeper/internal/adapter/storage/pgsql"
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/MikeRez0/gophkeeper/internal/core/port"
 	"github.com/MikeRez0/gophkeeper/internal/core/service"
@@ -21,7 +21,7 @@ func getKeychainDeps(log *zap.Logger) (port.IKeychainRepository, error) {
 		return nil, err
 	}
 
-	urepo, err := repository.NewUserRepository(db)
+	urepo, err := pgsql.NewUserRepository(db)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func getKeychainDeps(log *zap.Logger) (port.IKeychainRepository, error) {
 		return nil, err
 	}
 
-	repo, err := repository.NewKeychainPgRepository(db, log)
+	repo, err := pgsql.NewKeychainPgRepository(db, log)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func TestKeychainService_Sync(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Keychain save/get", func(t *testing.T) {
-		k, err = s.KeychainCreate(ctx, userID, k)
+		k, err = s.KeychainSave(ctx, userID, k)
 		assert.NoError(t, err)
 		if err != nil {
 			return
@@ -70,7 +70,12 @@ func TestKeychainService_Sync(t *testing.T) {
 
 		testK, err := s.KeychainGet(ctx, userID, k.ID)
 		assert.NoError(t, err)
-		assert.Equal(t, testK.ID, k.ID)
+		if !assert.NotNil(t, testK) {
+			return
+		}
+		if testK != nil {
+			assert.Equal(t, testK.ID, k.ID)
+		}
 
 		_, err = s.KeychainGet(ctx, userID, domain.KeychainID(uuid.New()))
 		assert.ErrorIs(t, err, domain.ErrDataNotFound)

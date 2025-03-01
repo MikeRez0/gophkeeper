@@ -13,7 +13,7 @@ type IUserService interface {
 }
 
 type IKeychainDataService interface {
-	KeychainCreate(ctx context.Context, user domain.UserID, keychain *domain.KCData) (*domain.KCData, error)
+	KeychainSave(ctx context.Context, user domain.UserID, keychain *domain.KCData) (*domain.KCData, error)
 	KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error)
 	KeychainGet(ctx context.Context, user domain.UserID, keychainID domain.KeychainID) (*domain.KCData, error)
 

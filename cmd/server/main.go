@@ -10,8 +10,9 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/adapter/auth"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/logger"
-	"github.com/MikeRez0/gophkeeper/internal/adapter/storage"
-	"github.com/MikeRez0/gophkeeper/internal/adapter/storage/repository"
+	"github.com/MikeRez0/gophkeeper/internal/adapter/storage/pgsql"
+	sql "github.com/MikeRez0/gophkeeper/internal/adapter/storage/sqlite"
+	"github.com/MikeRez0/gophkeeper/internal/core/port"
 	"github.com/MikeRez0/gophkeeper/internal/core/service"
 )
 
@@ -58,22 +59,55 @@ func main() {
 
 	ctx := context.Background()
 
-	db, err := storage.NewDBStorage(ctx, conf.Database)
-	if err != nil {
-		log.Error("database error", zap.Error(err))
-		return
-	}
-	err = db.RunMigrations()
-	if err != nil {
-		log.Error("database migration error", zap.Error(err))
-		return
+	var userRepo port.IUserRepository
+	var keychainRepo port.IKeychainRepository
+
+	if conf.Database.Driver == "postgresql" {
+		db, err := pgsql.NewDBStorage(ctx, conf.Database)
+		if err != nil {
+			log.Error("postgresql database error", zap.Error(err))
+			return
+		}
+		err = db.RunMigrations()
+		if err != nil {
+			log.Error("postgresql database migration error", zap.Error(err))
+			return
+		}
+
+		userRepo, err = pgsql.NewUserRepository(db)
+		if err != nil {
+			log.Error("user repo (postgresql) creating error", zap.Error(err))
+			return
+		}
+		keychainRepo, err = pgsql.NewKeychainPgRepository(db, log.Named("PgRepo"))
+		if err != nil {
+			log.Error("keychain repo (postgresql) creating error", zap.Error(err))
+			return
+		}
+	} else {
+		db, err := sql.NewDBStorage(ctx, conf.Database)
+		if err != nil {
+			log.Error("database error", zap.Error(err))
+			return
+		}
+		err = db.RunMigrations()
+		if err != nil {
+			log.Error("database migration error", zap.Error(err))
+			return
+		}
+
+		userRepo, err = sql.NewUserRepository(db, log)
+		if err != nil {
+			log.Error("user repo creating error", zap.Error(err))
+			return
+		}
+		keychainRepo, err = sql.NewKeychainSqliteRepository(db, log.Named("SqlRepo"))
+		if err != nil {
+			log.Error("keychain repo creating error", zap.Error(err))
+			return
+		}
 	}
 
-	userRepo, err := repository.NewUserRepository(db)
-	if err != nil {
-		log.Error("order repo creating error", zap.Error(err))
-		return
-	}
 	tokenService, err := auth.New()
 	if err != nil {
 		log.Error("token service creating error", zap.Error(err))
@@ -92,14 +126,17 @@ func main() {
 		return
 	}
 
-	kcRepo, err := repository.NewKeychainPgRepository(db, log.Named("PgRepo"))
+	keychainSrv, err := service.NewKeychainService(keychainRepo, log.Named("KeychainService"))
 	if err != nil {
-		log.Error("order repo creating error", zap.Error(err))
+		log.Error("keychain service creating error", zap.Error(err))
 		return
 	}
-	keychainSrv, err := service.NewKeychainService(kcRepo, log.Named("KeychainService"))
 
 	kHandler, err := http.NewKeychainHandler(keychainSrv, log.Named("Keychain handler"))
+	if err != nil {
+		log.Error("keychain handler creating error", zap.Error(err))
+		return
+	}
 
 	r, err := http.NewRouter(conf.HTTP, tokenService, userHandler, kHandler, log.Named("Router"))
 	if err != nil {

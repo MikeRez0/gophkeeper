@@ -64,7 +64,7 @@ func (h *KeychainHandler) SaveKeychain(ctx *gin.Context) {
 		return
 	}
 
-	k, err := h.service.KeychainCreate(ctx, payload.UserID, &domain.KCData{
+	k, err := h.service.KeychainSave(ctx, payload.UserID, &domain.KCData{
 		ID:      keychainID,
 		OwnerID: payload.UserID,
 		Name:    keychainReq.Name,

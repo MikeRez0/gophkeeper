@@ -16,8 +16,9 @@ type IUserRepository interface {
 }
 
 type IKeychainRepository interface {
-	KeychainInsert(context.Context, *domain.KCData) (*domain.KCData, error)
-	KeychainUpdate(context.Context, *domain.KCData) (*domain.KCData, error)
+	// KeychainInsert(context.Context, *domain.KCData) (*domain.KCData, error)
+	// KeychainUpdate(context.Context, *domain.KCData) (*domain.KCData, error)
+	KeychainUpsert(context.Context, *domain.KCData) (*domain.KCData, error)
 	KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error)
 	KeychainGet(ctx context.Context, keychainID domain.KeychainID) (*domain.KCData, error)
 
