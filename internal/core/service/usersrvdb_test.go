@@ -139,7 +139,8 @@ func TestServiceDB_UserLogin(t *testing.T) {
 			assert.NoError(t, err)
 
 			if test.registerUser {
-				s.RegisterUser(context.Background(), &test.user)
+				_, err := s.RegisterUser(context.Background(), &test.user)
+				assert.NoError(t, err)
 			}
 
 			token, err := s.LoginUser(context.Background(), test.user.Login, test.user.Password)

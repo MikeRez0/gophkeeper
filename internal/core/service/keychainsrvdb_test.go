@@ -47,7 +47,7 @@ func TestKeychainService_Sync(t *testing.T) {
 		return
 	}
 
-	s, err := service.NewKeychainService(repo, l)
+	s, err := service.NewKeychainDataService(repo, l)
 	assert.NoError(t, err)
 	if err != nil {
 		return
@@ -79,6 +79,5 @@ func TestKeychainService_Sync(t *testing.T) {
 
 		_, err = s.KeychainGet(ctx, userID, domain.KeychainID(uuid.New()))
 		assert.ErrorIs(t, err, domain.ErrDataNotFound)
-
 	})
 }

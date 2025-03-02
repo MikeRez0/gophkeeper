@@ -1,12 +1,16 @@
 package tui
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/client/app"
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/MikeRez0/gophkeeper/internal/core/keychain"
 	"github.com/gdamore/tcell/v2"
+	"github.com/google/uuid"
 	"github.com/rivo/tview"
 	"go.uber.org/zap"
 )
@@ -21,6 +25,15 @@ type UIController struct {
 	log *zap.Logger
 	app *app.ClientApp
 
+	login            string
+	password         string
+	keychainPassword string
+	secretValue      []byte
+
+	keychainID     domain.KeychainID
+	keychainItemID domain.KeychainItemID
+	keychainItem   *keychain.KeychainItem
+
 	uiapp        *tview.Application
 	pages        *tview.Pages
 	keychainList *tview.List
@@ -29,13 +42,6 @@ type UIController struct {
 	passForm     *tview.Form
 	loginForm    *tview.Form
 	logView      *tview.TextView
-
-	login    string
-	password string
-
-	keychain     *keychain.Keychain
-	keychainItem *keychain.KeychainItem
-	secretValue  []byte
 }
 
 func NewUIController(app *app.ClientApp, log *zap.Logger) (*UIController, error) {
@@ -45,17 +51,6 @@ func NewUIController(app *app.ClientApp, log *zap.Logger) (*UIController, error)
 	}
 
 	return c, nil
-}
-
-func (c *UIController) refresh() {
-	switch {
-	case c.keychain == nil: // keychain list is active
-		c.uiapp.SetFocus(c.keychainList)
-	case c.keychainItem == nil:
-		c.uiapp.SetFocus(c.itemsList)
-	case c.keychainItem != nil:
-		c.uiapp.SetFocus(c.itemForm)
-	}
 }
 
 func (c *UIController) buildUI() {
@@ -82,8 +77,15 @@ func (c *UIController) buildUI() {
 	c.logView.SetBorder(true)
 
 	pLogin := tview.NewGrid().
-		AddItem(c.loginForm, 3, 3, 6, 3, 10, 15, true).
+		AddItem(tview.NewBox(), 0, 0, 12, 12, 0, 0, false).
+		AddItem(c.loginForm, 1, 1, 9, 9, 10, 15, true).
 		AddItem(c.logView, 12, 0, 1, 12, 1, 30, true)
+	pLogin.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			c.uiapp.Stop()
+		}
+		return event
+	})
 
 	pKeychain := tview.NewGrid().
 		AddItem(c.keychainList, 0, 0, 9, 2, 8, 10, true).
@@ -100,14 +102,14 @@ func (c *UIController) buildUI() {
 			}
 		case event.Rune() == 's':
 			if c.itemsList.HasFocus() || c.keychainList.HasFocus() {
-				err := c.app.SyncKeychain(c.keychain)
+				err := c.app.SyncKeychains(context.Background())
 				if err != nil {
 					c.log.Error("sync error", zap.Error(err))
 					c.writeLog("sync error", err)
 				} else {
 					c.writeLog("successfull synced", nil)
 				}
-				if c.keychain != nil {
+				if c.keychainID != domain.KeychainID(uuid.Nil) {
 					c.showItems()
 				}
 			}
@@ -131,25 +133,25 @@ func (c *UIController) buildUI() {
 			}
 		case event.Rune() == 'a':
 			if c.itemsList.HasFocus() {
-				c.keychainItem = c.keychain.NewItem(domain.KCItemTypePassword)
+				c.keychainItemID = domain.KeychainItemID(uuid.Nil)
 				c.showItemForm()
 				return nil
 			}
 		case event.Rune() == 's':
 			if c.itemsList.HasFocus() || c.keychainList.HasFocus() {
-				err := c.app.SyncKeychain(c.keychain)
+				err := c.app.SyncKeychains(context.Background())
 				if err != nil {
 					c.writeLog("sync error", err)
 				} else {
 					c.writeLog("successfull synced", nil)
 				}
-				if c.keychain != nil {
+				if c.keychainID != domain.KeychainID(uuid.Nil) {
 					c.showItems()
 				}
 			}
 		case event.Key() == tcell.KeyLeft || event.Key() == tcell.KeyEscape:
 			if c.itemsList.HasFocus() {
-				c.keychain.Pass = ""
+				c.keychainPassword = ""
 				c.showKeychainList()
 			}
 		}
@@ -163,58 +165,108 @@ func (c *UIController) buildUI() {
 }
 
 func (c *UIController) showKeychainList() {
-	c.keychain = nil
+	c.keychainID = domain.KeychainID{}
 	c.itemsList.Clear()
 
 	c.keychainList.Clear()
 	c.keychainList.ShowSecondaryText(false)
 
+	keychains, err := c.app.Service.KeychainList(context.Background(), 0)
+	if err != nil {
+		c.writeLog("list keychain error", err)
+		return
+	}
+
 	selected := 0
-	for i, k := range c.app.Keychains {
+	for i, k := range keychains {
 		c.keychainList.AddItem(
-			fmt.Sprintf("%v:  %s", i, k.Data().Name),
+			fmt.Sprintf("%v:  %s", i, k.Name),
 			"", rune(0), func() {
-				c.keychain = k
+				c.keychainID = k.ID
 				c.requestPass()
 			})
-		if k == c.keychain {
+		if k.ID == c.keychainID {
 			selected = i
 		}
 	}
 
 	c.keychainList.SetCurrentItem(selected)
 	c.pages.SwitchToPage(cPageKeychain)
-	c.refresh()
 	c.uiapp.SetFocus(c.keychainList)
 }
 
 func (c *UIController) showItems() {
-	c.itemsList.Clear()
+	// clear item detail
+	c.secretValue = nil
+	c.itemForm.Clear(true)
+	c.resetKeychainItem()
 
-	for i, item := range c.keychain.Items {
-		status := ""
-		if item.IsChanged() {
-			status = "*"
-		}
+	c.itemsList.Clear()
+	ctx := context.Background()
+
+	list, err := c.app.Service.KeychainGetItemsSince(ctx, 0, c.keychainID, time.Time{})
+	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
+		c.writeLog("read list error", err)
+		return
+	}
+
+	for i, item := range list {
 		c.itemsList.AddItem(
-			fmt.Sprintf("%v: %s %s", i, item.Label(), status),
-			fmt.Sprintf("[%s] %s", item.Data().ItemType, item.MetaDataItem(domain.KCMetaKeyComment)),
+			fmt.Sprintf("%v: %s", i, item.Label),
+			fmt.Sprintf("[%s] %s", item.ItemType, item.MetaData[domain.KCMetaKeyComment]),
 			rune(0), func() {
-				c.keychainItem = item
+				c.keychainItemID = item.ID
 				c.showItemForm()
 			})
 	}
 
-	c.refresh()
 	c.uiapp.SetFocus(c.itemsList)
+}
+
+func (c *UIController) setKeychainItem(kid domain.KeychainItemID) error {
+	if c.keychainItem == nil {
+		if kid == domain.KeychainItemID(uuid.Nil) {
+			// factory new keychain item
+			c.keychainItem = keychain.NewKeychainItem(c.keychainID, domain.KCItemTypePassword)
+			c.keychainItemID = c.keychainItem.Data().ID
+			return nil
+		} else {
+			// load item from local store
+			data, err := c.app.Service.KeychainGetItem(context.Background(), 0,
+				c.keychainID, c.keychainItemID)
+			if err != nil {
+				c.writeLog("error reading item", err)
+				return err
+			}
+			c.keychainItem = keychain.NewKeychainItemFromData(data)
+			c.keychainItemID = c.keychainItem.Data().ID
+			return nil
+		}
+	} else {
+		if kid != c.keychainItem.Data().ID {
+			c.keychainItem = nil
+			return c.setKeychainItem(kid)
+		}
+		return nil
+	}
+}
+func (c *UIController) resetKeychainItem() {
+	c.keychainItem = nil
+	c.keychainItemID = domain.KeychainItemID(uuid.Nil)
 }
 
 func (c *UIController) showItemForm() {
 	c.itemForm.Clear(true)
 
+	err := c.setKeychainItem(c.keychainItemID)
+	if err != nil {
+		c.writeLog("error loading item", err)
+		return
+	}
+
 	item := c.keychainItem
 
-	if secret, err := c.keychain.GetSecret(c.keychainItem); err == nil {
+	if secret, err := c.app.GetSecret(item, c.keychainPassword); err == nil {
 		c.itemForm.AddInputField("Label",
 			item.Label(), 40, nil,
 			func(text string) {
@@ -225,20 +277,13 @@ func (c *UIController) showItemForm() {
 			domain.KeyChainTypes(),
 			int(item.Data().ItemType)-1,
 			func(option string, optionIndex int) {
-				if domain.KCItemType(optionIndex+1) != c.keychainItem.Data().ItemType {
-					c.keychainItem.SetType(domain.KCItemType(optionIndex + 1))
+				if domain.KCItemType(optionIndex+1) != item.Data().ItemType {
+					item.SetType(domain.KCItemType(optionIndex + 1))
 					c.showItemForm()
 				}
 			})
 
-		c.renderMetaData()
-		c.itemForm.AddButton("OK", func() {
-			_ = c.keychain.StoreSecret(c.keychainItem, c.secretValue)
-			c.secretValue = nil
-			c.itemForm.Clear(true)
-			c.keychainItem = nil
-			c.showItems()
-		})
+		c.renderMetaData(item)
 
 		c.secretValue = secret
 		c.itemForm.AddInputField("Secret",
@@ -247,13 +292,25 @@ func (c *UIController) showItemForm() {
 			nil, func(text string) {
 				c.secretValue = []byte(text)
 			})
+
+		c.itemForm.AddButton("OK", func() {
+			_ = c.app.StoreSecret(item, c.secretValue, c.keychainPassword)
+
+			_, _, err := c.app.Service.KeychainSaveItem(context.Background(),
+				c.app.UserID, item.Data())
+			if err != nil {
+				c.writeLog("store items error", err)
+				return
+			}
+			c.showItems()
+		})
+		c.itemForm.AddButton("Cancel", func() {
+			c.showItems()
+		})
 	} else {
 		c.writeLog("error reading secret", err)
 		c.itemForm.AddTextView("Error", "Wrong pass key", 30, 1, false, false)
 		c.itemForm.AddButton("OK", func() {
-			c.secretValue = nil
-			c.itemForm.Clear(true)
-			c.keychainItem = nil
 			c.showItems()
 		})
 	}
@@ -261,12 +318,12 @@ func (c *UIController) showItemForm() {
 	c.uiapp.SetFocus(c.itemForm)
 }
 
-func (c *UIController) renderMetaData() {
-	for k, v := range c.keychainItem.MetaData() {
+func (c *UIController) renderMetaData(keychainItem *keychain.KeychainItem) {
+	for k, v := range keychainItem.MetaData() {
 		c.itemForm.AddInputField(k,
 			v, 50, nil,
 			func(text string) {
-				c.keychainItem.MetaDataSetItem(k, text)
+				keychainItem.MetaDataSetItem(k, text)
 			})
 	}
 }
@@ -275,9 +332,9 @@ func (c *UIController) requestPass() {
 	c.passForm.Clear(true)
 
 	c.passForm.AddPasswordField("Pass",
-		c.keychain.Pass, 30, '*',
+		c.keychainPassword, 30, '*',
 		func(text string) {
-			c.keychain.Pass = text
+			c.keychainPassword = text
 		})
 	c.passForm.AddButton("OK", func() {
 		c.passForm.Clear(true)
@@ -286,7 +343,7 @@ func (c *UIController) requestPass() {
 	})
 	c.passForm.AddButton("Cancel", func() {
 		c.passForm.Clear(true)
-		c.keychain.Pass = ""
+		c.keychainPassword = ""
 		c.showKeychainList()
 	})
 
@@ -316,17 +373,14 @@ func (c *UIController) showLoginForm() {
 
 	c.loginForm.AddButton("Login",
 		func() {
-			err := c.app.Connect(c.login, c.password)
+			ctx := context.Background()
+			err := c.app.Connect(ctx, c.login, c.password)
 			if err != nil {
 				c.writeLog("connection error", err)
 				return
 			}
-			err = c.app.FetchKeychainList()
-			if err != nil {
-				c.writeLog("fetch keychain list error", err)
-				return
-			}
-			err = c.app.SyncKeychain(nil)
+
+			err = c.app.SyncKeychains(context.Background())
 			if err != nil {
 				c.writeLog("sync keychain error", err)
 				return
@@ -337,19 +391,37 @@ func (c *UIController) showLoginForm() {
 
 	c.loginForm.AddButton("Register",
 		func() {
-			err := c.app.RegisterUser(c.login, c.password)
+			ctx := context.Background()
+			err := c.app.RegisterUser(ctx, c.login, c.password)
 			if err != nil {
 				c.writeLog("registration error", err)
 				return
 			}
 
-			k, err := keychain.NewKeychain(nil, c.app.Log)
+			_, err = c.app.Service.KeychainSave(ctx, c.app.UserID, &domain.KCData{
+				Name:    "My keychain",
+				OwnerID: c.app.UserID,
+				ID:      domain.KeychainID(uuid.New()),
+			})
 			if err != nil {
-				c.writeLog("error creation keychain", err)
+				c.writeLog("creation keychain error", err)
 				return
 			}
-			c.app.Keychains = append(c.app.Keychains, k)
 
+			c.showKeychainList()
+		})
+
+	c.loginForm.AddButton("Offline",
+		func() {
+			l, err := c.app.Service.KeychainList(context.Background(), c.app.UserID)
+			if err != nil {
+				c.writeLog("local keychain read error", err)
+				return
+			}
+			if len(l) == 0 {
+				c.writeLog("local keychain is empty", nil)
+				return
+			}
 			c.showKeychainList()
 		})
 
@@ -358,7 +430,7 @@ func (c *UIController) showLoginForm() {
 
 func (c *UIController) writeLog(message string, err error) {
 	if err != nil {
-		c.log.Error(message, zap.Error(err))
+		// c.log.Error(message, zap.Error(err))
 		_, _ = fmt.Fprintf(c.logView, "%s: %v\n", message, err)
 	} else {
 		_, _ = fmt.Fprintln(c.logView, message)

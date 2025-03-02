@@ -10,22 +10,23 @@ import (
 	"go.uber.org/zap"
 )
 
-type KeychainService struct {
-	repo   port.IKeychainRepository
-	logger *zap.Logger
+type KeychainDataService struct {
+	repo      port.IKeychainRepository
+	logger    *zap.Logger
+	localMode bool
 }
 
-func NewKeychainService(repo port.IKeychainRepository, logger *zap.Logger) (*KeychainService, error) {
-	return &KeychainService{
+func NewKeychainDataService(repo port.IKeychainRepository, logger *zap.Logger) (*KeychainDataService, error) {
+	return &KeychainDataService{
 		repo:   repo,
 		logger: logger,
 	}, nil
 }
 
-func (s *KeychainService) KeychainSave(ctx context.Context,
+func (s *KeychainDataService) KeychainSave(ctx context.Context,
 	userID domain.UserID,
 	keychain *domain.KCData) (*domain.KCData, error) {
-	if userID != keychain.OwnerID {
+	if !s.localMode && userID != keychain.OwnerID {
 		return nil, domain.ErrBadRequest
 	}
 
@@ -42,10 +43,9 @@ func (s *KeychainService) KeychainSave(ctx context.Context,
 		return nil, err
 	}
 	return kc, nil
-
 }
 
-func (s *KeychainService) KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error) {
+func (s *KeychainDataService) KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error) {
 	list, err := s.repo.KeychainList(ctx, user)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (s *KeychainService) KeychainList(ctx context.Context, user domain.UserID) 
 	return list, nil
 }
 
-func (s *KeychainService) KeychainGet(ctx context.Context, user domain.UserID,
+func (s *KeychainDataService) KeychainGet(ctx context.Context, user domain.UserID,
 	keychainID domain.KeychainID) (*domain.KCData, error) {
 	list, err := s.repo.KeychainList(ctx, user)
 	if err != nil {
@@ -67,7 +67,7 @@ func (s *KeychainService) KeychainGet(ctx context.Context, user domain.UserID,
 	return nil, domain.ErrDataNotFound
 }
 
-func (s *KeychainService) KeychainSaveItem(ctx context.Context, user domain.UserID,
+func (s *KeychainDataService) KeychainSaveItem(ctx context.Context, user domain.UserID,
 	item *domain.KCItemData) (*domain.KCItemData, bool, error) {
 	if !s.checkAuthority(ctx, user, item.KeyChainID) {
 		return nil, false, domain.ErrForbidden
@@ -79,7 +79,7 @@ func (s *KeychainService) KeychainSaveItem(ctx context.Context, user domain.User
 	}
 	return item, updated, nil
 }
-func (s *KeychainService) KeychainGetItem(ctx context.Context, user domain.UserID, keychainID domain.KeychainID,
+func (s *KeychainDataService) KeychainGetItem(ctx context.Context, user domain.UserID, keychainID domain.KeychainID,
 	id domain.KeychainItemID) (*domain.KCItemData, error) {
 	if !s.checkAuthority(ctx, user, keychainID) {
 		return nil, domain.ErrForbidden
@@ -92,7 +92,8 @@ func (s *KeychainService) KeychainGetItem(ctx context.Context, user domain.UserI
 	return item, nil
 }
 
-func (s *KeychainService) KeychainGetItemsSince(ctx context.Context, user domain.UserID, keychainID domain.KeychainID,
+func (s *KeychainDataService) KeychainGetItemsSince(ctx context.Context,
+	user domain.UserID, keychainID domain.KeychainID,
 	since time.Time) ([]*domain.KCItemData, error) {
 	if !s.checkAuthority(ctx, user, keychainID) {
 		return nil, domain.ErrForbidden
@@ -105,14 +106,18 @@ func (s *KeychainService) KeychainGetItemsSince(ctx context.Context, user domain
 	return items, nil
 }
 
-func (s *KeychainService) checkAuthority(ctx context.Context, userID domain.UserID, keychainID domain.KeychainID) bool {
+func (s *KeychainDataService) checkAuthority(ctx context.Context,
+	userID domain.UserID, keychainID domain.KeychainID) bool {
+	if s.localMode {
+		return true
+	}
 	if k, err := s.repo.KeychainGet(ctx, keychainID); err == nil {
 		return k.OwnerID == userID
 	}
 	return false
 }
 
-func (s *KeychainService) Sync(ctx context.Context, user domain.UserID,
+func (s *KeychainDataService) Sync(ctx context.Context, user domain.UserID,
 	keychainID domain.KeychainID, fromTime time.Time, items []*domain.KCItemData) ([]*domain.KCItemData, error) {
 	for _, i := range items {
 		if keychainID != i.KeyChainID {
@@ -129,4 +134,8 @@ func (s *KeychainService) Sync(ctx context.Context, user domain.UserID,
 	}
 
 	return s.KeychainGetItemsSince(ctx, user, keychainID, fromTime)
+}
+
+func (s *KeychainDataService) SetLocalMode(localMode bool) {
+	s.localMode = localMode
 }

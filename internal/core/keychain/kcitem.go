@@ -14,16 +14,16 @@ type KeychainItem struct {
 	changed    bool
 }
 
-func newKeychainItem(kc *Keychain, itemType domain.KCItemType) *KeychainItem {
+func NewKeychainItem(kc domain.KeychainID, itemType domain.KCItemType) *KeychainItem {
 	item := KeychainItem{
-		data: newKeychainItemData(kc.data.ID, itemType),
+		data: newKeychainItemData(kc, itemType),
 	}
 
 	item.touch()
 
 	return &item
 }
-func newKeychainItemFromData(data *domain.KCItemData) *KeychainItem {
+func NewKeychainItemFromData(data *domain.KCItemData) *KeychainItem {
 	item := KeychainItem{
 		data: data,
 	}
@@ -126,5 +126,11 @@ func (ki *KeychainItem) IsChanged() bool {
 func (ki *KeychainItem) SetType(t domain.KCItemType) {
 	ki.data.ItemType = t
 	fillMetaData(ki.data)
+	ki.touch()
+}
+
+func (ki *KeychainItem) StoreSecret(key, value []byte) {
+	ki.data.Key = key
+	ki.data.Value = value
 	ki.touch()
 }

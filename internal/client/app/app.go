@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,28 +12,47 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/MikeRez0/gophkeeper/internal/core/keychain"
+	"github.com/MikeRez0/gophkeeper/internal/core/port"
+	"github.com/MikeRez0/gophkeeper/internal/core/utils/encrypter"
 	"go.uber.org/zap"
 )
 
 type ClientApp struct {
-	config     *config.ConfigClient
-	Log        *zap.Logger
-	serverHost string
-	token      string
-	Keychains  []*keychain.Keychain
+	config   *config.ConfigClient
+	enc      *encrypter.Encrypter
+	dec      *encrypter.Decrypter
+	Log      *zap.Logger
+	token    string
+	Service  port.IKeychainDataService
+	SyncTime time.Time
+	UserID   domain.UserID
 }
 
-func NewApp(config *config.ConfigClient, log *zap.Logger) (*ClientApp, error) {
+const cKeySize = 32
+
+func NewApp(config *config.ConfigClient, service port.IKeychainDataService, log *zap.Logger) (*ClientApp, error) {
+	enc, err := encrypter.NewEncrypter(log, cKeySize)
+	if err != nil {
+		return nil, fmt.Errorf("error creating encrypter: %w", err)
+	}
+	dec, err := encrypter.NewDecrypter(log, cKeySize)
+	if err != nil {
+		return nil, fmt.Errorf("error creating decrypter: %w", err)
+	}
+
 	return &ClientApp{
-		config:     config,
-		Log:        log,
-		Keychains:  make([]*keychain.Keychain, 0, 1),
-		serverHost: config.HostString,
+		config:   config,
+		Log:      log,
+		enc:      enc,
+		dec:      dec,
+		Service:  service,
+		SyncTime: time.Time{},
+		UserID:   domain.UserID(1),
 	}, nil
 }
 
-func (a *ClientApp) Connect(login, password string) error {
-	data, err := a.doRequest(
+func (a *ClientApp) Connect(ctx context.Context, login, password string) error {
+	data, err := a.doRequest(ctx,
 		"/api/user/login",
 		http.MethodPost,
 		map[string]string{"login": login, "password": password})
@@ -53,8 +73,8 @@ func (a *ClientApp) Connect(login, password string) error {
 	return nil
 }
 
-func (a *ClientApp) RegisterUser(login, password string) error {
-	data, err := a.doRequest(
+func (a *ClientApp) RegisterUser(ctx context.Context, login, password string) error {
+	data, err := a.doRequest(ctx,
 		"/api/user/register",
 		http.MethodPost,
 		map[string]string{"login": login, "password": password})
@@ -75,8 +95,8 @@ func (a *ClientApp) RegisterUser(login, password string) error {
 	return nil
 }
 
-func (a *ClientApp) doRequest(path string, method string, data any) ([]byte, error) {
-	requestStr := a.serverHost + path
+func (a *ClientApp) doRequest(ctx context.Context, path string, method string, data any) ([]byte, error) {
+	requestStr := a.config.HostString + path
 
 	var (
 		body []byte
@@ -101,6 +121,8 @@ func (a *ClientApp) doRequest(path string, method string, data any) ([]byte, err
 		req.Header.Add("Authorization", "Bearer "+a.token)
 	}
 
+	req = req.WithContext(ctx)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error on %s : %w", req.URL, err)
@@ -116,85 +138,39 @@ func (a *ClientApp) doRequest(path string, method string, data any) ([]byte, err
 
 	return result, nil
 }
-func (a *ClientApp) FetchKeychainList() error {
-	data, err := a.doRequest("/api/keychain", http.MethodGet, nil)
-	if err != nil {
-		return fmt.Errorf("error requesting keychain list : %w", err)
+
+func (a *ClientApp) StoreSecret(item *keychain.KeychainItem, secret []byte, pass string) error {
+	// check pass for old secret
+	if oldSecret, err := a.GetSecret(item, pass); err != nil {
+		return err
+	} else if bytes.Equal(oldSecret, secret) {
+		//no changes
+		return nil
 	}
 
-	keychainList := make([]domain.KCData, 0)
-	err = json.Unmarshal(data, &keychainList)
+	env, err := a.enc.Encrypt(secret, []byte(pass))
 	if err != nil {
-		return fmt.Errorf("error parsing response %w", err)
+		return fmt.Errorf("error storing secret:%w", err)
 	}
 
-	for _, kdata := range keychainList {
-		k, err := keychain.NewKeychain(&kdata, a.Log)
-		if err != nil {
-			return fmt.Errorf("error creating keychain: %w", err)
-		}
-		a.Keychains = append(a.Keychains, k)
-	}
+	item.StoreSecret(env.Key, env.Data)
 
 	return nil
 }
 
-func (a *ClientApp) SyncKeychain(keychain *keychain.Keychain) error {
-	if keychain == nil {
-		for _, k := range a.Keychains {
-			kc := k
-			err := a.SyncKeychain(kc)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+func (a *ClientApp) GetSecret(item *keychain.KeychainItem, pass string) ([]byte, error) {
+	data := item.Data()
+	if len(data.Value) == 0 {
+		return data.Value, nil
 	}
+	secret, err := a.dec.Decrypt(&encrypter.Envelope{
+		Key:  data.Key,
+		Data: data.Value,
+	}, []byte(pass))
 
-	if keychain.IsChanged() {
-		_, err := a.doRequest(
-			"/api/keychain/"+keychain.Data().ID.String(),
-			http.MethodPost,
-			keychain.Data())
-
-		if err != nil {
-			return fmt.Errorf("error on keychain data sync: %w", err)
-		}
-	}
-
-	items := make([]*domain.KCItemData, 0)
-	for _, i := range keychain.Items {
-		if i.Data().ClientTime.Compare(keychain.SyncTime) >= 0 {
-			items = append(items, i.Data())
-		}
-	}
-
-	query := ""
-	t := time.Now().UTC()
-	if !keychain.SyncTime.IsZero() {
-		query = "?from_time=" + keychain.SyncTime.UTC().Format(time.RFC3339)
-	}
-	keychain.SyncTime = t
-
-	data, err := a.doRequest(
-		"/api/keychain/"+keychain.Data().ID.String()+"/sync"+query,
-		http.MethodPost,
-		items,
-	)
 	if err != nil {
-		return fmt.Errorf("error on keychain items sync: %w", err)
+		return nil, fmt.Errorf("decryption failed:%w", err)
 	}
 
-	clear(items)
-
-	err = json.Unmarshal(data, &items)
-	if err != nil {
-		return fmt.Errorf("error reading items:%w", err)
-	}
-
-	for _, i := range items {
-		keychain.ApplyItemFromData(i)
-	}
-
-	return nil
+	return secret, nil
 }

@@ -27,6 +27,14 @@ test:
 test-cover: test
 	go test ./... -cover
 
+.PHONY: run-server
+run-server:
+	go run ./cmd/server/main.go -c .var/conf/server.cfg
+
+.PHONY: run-client
+run-client:
+	go run ./cmd/client/main.go -c .var/conf/client.cfg
+
 .PHONY: db-start
 db-start:
 	docker compose -f "scripts/db/docker-compose.yaml" up -d --build

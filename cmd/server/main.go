@@ -126,7 +126,7 @@ func main() {
 		return
 	}
 
-	keychainSrv, err := service.NewKeychainService(keychainRepo, log.Named("KeychainService"))
+	keychainSrv, err := service.NewKeychainDataService(keychainRepo, log.Named("KeychainService"))
 	if err != nil {
 		log.Error("keychain service creating error", zap.Error(err))
 		return

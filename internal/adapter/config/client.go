@@ -16,12 +16,13 @@ import (
 //	    "address": "localhost:8080", // аналог переменной окружения ADDRESS или флага -a
 //	}
 type ConfigClient struct {
-	App          *App     `json:"app"`
-	HostString   string   `env:"ADDRESS" json:"address"`
-	LogLevel     string   `env:"LOG_LEVEL"`
-	SyncInterval Duration `json:"sync_interval"` //env:"SYNC_INTERVAL"
-	RateLimit    int      `env:"RATE_LIMIT"`
-	GRPC         bool     `env:"GRPC_MODE" json:"grpc_mode"`
+	App          *App      `json:"app"`
+	Database     *Database `json:"database"`
+	HostString   string    `env:"ADDRESS" json:"address"`
+	LogLevel     string    `env:"LOG_LEVEL"`
+	SyncInterval Duration  `json:"sync_interval"` //env:"SYNC_INTERVAL"
+	RateLimit    int       `env:"RATE_LIMIT"`
+	GRPC         bool      `env:"GRPC_MODE" json:"grpc_mode"`
 }
 
 // NewConfigClient - Parse and create new client app config.
@@ -33,6 +34,7 @@ func NewConfigClient() (*ConfigClient, error) {
 		SyncInterval: Duration{2 * time.Second},
 		RateLimit:    3,
 		GRPC:         false,
+		Database:     &Database{DSN: "keychain.db", Driver: "sqlite3"},
 	}
 
 	err := loadConfigFile(&config)
