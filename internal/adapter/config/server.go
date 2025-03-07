@@ -31,7 +31,9 @@ type ConfigServer struct {
 }
 
 type HTTP struct {
-	HostString string `env:"RUN_ADDRESS" json:"address"`
+	HostString  string `env:"RUN_ADDRESS" json:"address"`
+	TLSCertFile string `env:"TLS_CERTFILE" json:"tls_cert"`
+	TLSKeyFile  string `env:"TLS_KEYFILE" json:"tls_key"`
 }
 
 func NewConfigServer() (*ConfigServer, error) {

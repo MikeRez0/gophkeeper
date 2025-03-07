@@ -144,7 +144,11 @@ func main() {
 		return
 	}
 
-	err = r.Serve(conf.HTTP.HostString)
+	if conf.HTTP.TLSCertFile != "" && conf.HTTP.TLSKeyFile != "" {
+		err = r.RunTLS(conf.HTTP.HostString, conf.HTTP.TLSCertFile, conf.HTTP.TLSKeyFile)
+	} else {
+		err = r.Serve(conf.HTTP.HostString)
+	}
 	if err != nil {
 		log.Error("router serve error", zap.Error(err))
 		return
