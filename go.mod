@@ -6,6 +6,7 @@ require (
 	github.com/gdamore/tcell/v2 v2.7.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/rivo/tview v0.0.0-20241227133733-17b7edb88c57
+	github.com/spf13/cobra v1.9.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.32.0
 )
@@ -57,7 +58,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect

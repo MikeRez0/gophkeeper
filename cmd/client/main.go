@@ -28,7 +28,6 @@ func main() {
 	if buildCommit == "" {
 		buildCommit = "N/A"
 	}
-	fmt.Printf(cBuildInfoTemplate, buildVersion, buildDate, buildCommit, runtime.GOOS, runtime.GOARCH)
 
-	cmd.Execute()
+	cmd.Execute(fmt.Sprintf(cBuildInfoTemplate, buildVersion, buildDate, buildCommit, runtime.GOOS, runtime.GOARCH))
 }

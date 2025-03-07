@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -256,7 +257,7 @@ func (h *KeychainHandler) Sync(ctx *gin.Context) {
 	}
 
 	result, err := h.service.Sync(ctx, payload.UserID, keychainID, fromTime, items)
-	if err != nil {
+	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
 		h.handleError(ctx, err)
 		return
 	}

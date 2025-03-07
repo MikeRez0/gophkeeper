@@ -15,7 +15,7 @@ type KeychainID uuid.UUID
 type KCData struct {
 	Name    string     `json:"name"`
 	ID      KeychainID `json:"id"`
-	OwnerID UserID     `json:"owner_id"`
+	OwnerID UserID     `json:"-"`
 }
 
 type KCItemType byte

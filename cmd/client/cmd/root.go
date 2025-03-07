@@ -1,51 +1,69 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
+	"log"
 	"os"
 
+	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
+	"github.com/MikeRez0/gophkeeper/internal/client"
 	"github.com/spf13/cobra"
 )
 
-
-
-// rootCmd represents the base command when called without any subcommands
+// Comnand rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "client",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Short: "GophKeeper client application",
+	// Long: `GophKeeper client application`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return client.RunTUI(appConfig)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(version string) {
+	rootCmd.Version = version
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
-func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+var (
+	appConfig    *config.ConfigClient
+	offline      bool
+	login        string
+	password     string
+	token        string
+	keychainPass string
+	keychainName string
+)
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.client.yaml)")
+func init() {
+	appConfig = config.NewConfigClient()
+
+	pf := rootCmd.PersistentFlags()
+	{
+		pf.StringVarP(&appConfig.ConfigFile, "config", "c", appConfig.ConfigFile, "config filename")
+		pf.StringVarP(&appConfig.HostString, "address", "a", appConfig.HostString, "HTTP/gRPC server endpoint")
+		pf.BoolVarP(&appConfig.GRPC, "grpc", "g", appConfig.GRPC, "Enable gRPC Mode")
+		pf.IntVarP(&appConfig.SyncIntervalSeconds, "sync", "s", appConfig.SyncIntervalSeconds, "Sync interval")
+		pf.StringVarP(&appConfig.App.LogLevel, "log", "l", appConfig.App.LogLevel, "Log level")
+
+		pf.BoolVar(&offline, "offline", false, "Don't start synchronisation")
+		pf.StringVar(&login, "login", "", "Login for keychain remote service")
+		pf.StringVar(&password, "password", "", "Password for keychain remote service")
+		pf.StringVar(&token, "token", "", "Token value for keychain remote service")
+		pf.StringVar(&keychainPass, "key", "", "Password for keychain")
+		pf.StringVar(&keychainName, "keychain", "", "Keychain name (search value)")
+	}
+
+	if err := appConfig.LoadConfigFile(); err != nil {
+		log.Fatal(err)
+		return
+	}
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
-
-

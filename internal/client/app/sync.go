@@ -88,7 +88,7 @@ func (a *ClientApp) SyncKeychains(ctx context.Context) error {
 		}
 
 		_, err = a.Service.Sync(ctx, a.UserID, keychain.ID, time.Time{}, items)
-		if err != nil {
+		if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
 			return fmt.Errorf("error saving to local storage: %w", err)
 		}
 	}

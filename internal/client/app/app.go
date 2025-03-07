@@ -47,8 +47,12 @@ func NewApp(config *config.ConfigClient, service port.IKeychainDataService, log 
 		dec:      dec,
 		Service:  service,
 		SyncTime: time.Time{},
-		UserID:   domain.UserID(1),
+		UserID:   domain.UserID(0),
 	}, nil
+}
+
+func (a *ClientApp) SetToken(token string) {
+	a.token = token
 }
 
 func (a *ClientApp) Connect(ctx context.Context, login, password string) error {
@@ -144,7 +148,7 @@ func (a *ClientApp) StoreSecret(item *keychain.KeychainItem, secret []byte, pass
 	if oldSecret, err := a.GetSecret(item, pass); err != nil {
 		return err
 	} else if bytes.Equal(oldSecret, secret) {
-		//no changes
+		// no changes
 		return nil
 	}
 
