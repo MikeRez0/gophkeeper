@@ -12,8 +12,9 @@
 *.out
 
 # Binaries
-cmd/gophermart/main
-cmd/gophermart/gophermart
+cmd/client/client
+cmd/server/server
+cmd/gencert/gencert
 
 # Dependency directories (remove the comment below to include it)
 vendor/
@@ -28,3 +29,4 @@ vendor/
 
 #Temp files
 .tmp
+*keychain.db

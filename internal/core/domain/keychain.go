@@ -15,7 +15,7 @@ type KeychainID uuid.UUID
 type KCData struct {
 	Name    string     `json:"name"`
 	ID      KeychainID `json:"id"`
-	OwnerID UserID     `json:"owner_id"`
+	OwnerID UserID     `json:"-"`
 }
 
 type KCItemType byte
@@ -30,12 +30,13 @@ const (
 type KeychainItemID uuid.UUID
 
 const (
-	KCMetaKeyComment = "Comment"
-	KCMetaKeyLogin   = "Login"
-	KCMetaKeySite    = "Site"
-	KCMetaKeyIssuer  = "Issuer"
-	KCMetaKeyOwner   = "Owner"
-	KCMetaKeyValidTo = "ValidTo"
+	KCMetaKeyComment  = "Comment"
+	KCMetaKeyLogin    = "Login"
+	KCMetaKeySite     = "Site"
+	KCMetaKeyIssuer   = "Issuer"
+	KCMetaKeyOwner    = "Owner"
+	KCMetaKeyValidTo  = "ValidTo"
+	KCMetaKeyFilename = "Filename"
 )
 
 type KeychainItemMeta map[string]string
