@@ -11,18 +11,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var itemStoreCmd = &cobra.Command{
-	Use:   "store",
-	Short: "Store item to local keychain",
-	Long:  `Store item to local keychain`,
+var registerCmd = &cobra.Command{
+	Use:   "register",
+	Short: "Register new user",
+	Long:  `Register new user. Create empty local keychain if it hasn't yet`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := client.BootstrapApp(appConfig)
 		if err != nil {
-			return fmt.Errorf("start app error: %w", err)
+			return err
 		}
 
 		err = putFlagValues(client.NewCommandExecutor(app)).
-			ItemStore(context.Background(), getQueryFlags(cmd))
+			Register(context.Background())
 		if err != nil {
 			return fmt.Errorf("cmd error: %w", err)
 		}
@@ -31,5 +31,5 @@ var itemStoreCmd = &cobra.Command{
 }
 
 func init() {
-	itemCmd.AddCommand(itemStoreCmd)
+	rootCmd.AddCommand(registerCmd)
 }

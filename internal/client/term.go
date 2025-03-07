@@ -2,7 +2,11 @@ package client
 
 import (
 	"context"
+	"encoding/binary"
+	"errors"
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/MikeRez0/gophkeeper/internal/client/app"
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
@@ -21,6 +25,7 @@ type CommandExecutor struct {
 	Password     string
 	Token        string
 	KeychainPass string
+	Filename     string
 }
 
 func NewCommandExecutor(app *app.ClientApp) *CommandExecutor {
@@ -28,27 +33,19 @@ func NewCommandExecutor(app *app.ClientApp) *CommandExecutor {
 }
 
 func (c *CommandExecutor) preCommand(ctx context.Context) error {
-	_ = c.sync(ctx)
+	if !c.OfflineMode {
+		_ = c.sync(ctx)
+	}
 
 	return nil
 }
 
 func (c *CommandExecutor) sync(ctx context.Context) error {
-	if c.OfflineMode {
-		return nil
-	}
-
 	if c.Token != "" {
 		c.app.SetToken(c.Token)
 	} else {
-		if c.Login == "" {
-			c.Login = c.inputString("Login", "", false)
-		}
-		if c.Password == "" {
-			c.Password = c.inputString("Password", "", true)
-		}
 		fmt.Print("Connecting ... ")
-		err := c.app.Connect(ctx, c.Login, c.Password)
+		err := c.app.Connect(ctx, c.requestLogin(), c.requestPassword())
 		if err != nil {
 			fmt.Println("failed")
 			c.app.Log.Error("connection error", zap.Error(err))
@@ -68,6 +65,32 @@ func (c *CommandExecutor) sync(ctx context.Context) error {
 		fmt.Println("done")
 	}
 	return nil
+}
+
+func (c *CommandExecutor) Register(ctx context.Context) error {
+	list, err := c.app.Service.KeychainList(ctx, c.app.UserID)
+	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
+		return fmt.Errorf("read keychain list error: %w", err)
+	}
+
+	if errors.Is(err, domain.ErrDataNotFound) || len(list) == 0 {
+		_, err := c.app.Service.KeychainSave(ctx, c.app.UserID,
+			&domain.KCData{
+				Name:    "My keychain",
+				ID:      domain.KeychainID(uuid.New()),
+				OwnerID: c.app.UserID,
+			})
+		if err != nil {
+			return fmt.Errorf("error creating local keychain: %w", err)
+		}
+	}
+
+	err = c.app.RegisterUser(ctx, c.requestLogin(), c.requestPassword())
+	if err != nil {
+		return fmt.Errorf("registration error: %w", err)
+	}
+
+	return c.sync(ctx)
 }
 
 func (c *CommandExecutor) KeychainAdd(ctx context.Context, name string) error {
@@ -164,14 +187,30 @@ func (c *CommandExecutor) ItemStore(ctx context.Context, flags map[string]string
 
 		// Meta data
 		for k, v := range item.MetaData() {
+			if k == domain.KCMetaKeyFilename {
+				continue
+			}
 			item.MetaDataSetItem(k, c.inputString(k, v, false))
 		}
 
-		err := c.app.StoreSecret(item,
-			[]byte(c.inputString("SECRET", string(secret), true)),
-			c.KeychainPass)
-		if err != nil {
-			return fmt.Errorf("store secret error: %w", err)
+		if item.Data().ItemType == domain.KCItemTypeBinary {
+			item.MetaDataSetItem(domain.KCMetaKeyFilename, path.Base(c.requestFilename()))
+
+			secret, err := os.ReadFile(c.Filename)
+			if err != nil {
+				return fmt.Errorf("read file error: %w", err)
+			}
+			err = c.app.StoreSecret(item, secret, c.KeychainPass)
+			if err != nil {
+				return fmt.Errorf("store secret error: %w", err)
+			}
+		} else {
+			err := c.app.StoreSecret(item,
+				[]byte(c.inputString("SECRET", string(secret), true)),
+				c.KeychainPass)
+			if err != nil {
+				return fmt.Errorf("store secret error: %w", err)
+			}
 		}
 	} else {
 		return fmt.Errorf("get secret error: %w", err)
@@ -215,8 +254,15 @@ func (c *CommandExecutor) ItemShow(ctx context.Context, flags map[string]string,
 	// Secret
 	if secret, err := c.app.GetSecret(item, c.KeychainPass); err == nil {
 		if onlySecret {
-			fmt.Println(string(secret))
-			return nil
+			if item.Data().ItemType != domain.KCItemTypeBinary {
+				fmt.Println(string(secret))
+				return nil
+			} else {
+				if err := binary.Write(os.Stdout, binary.BigEndian, secret); err != nil {
+					return fmt.Errorf("error writing binary secret: %w", err)
+				}
+				return nil
+			}
 		}
 
 		info = append(info,
@@ -228,7 +274,25 @@ func (c *CommandExecutor) ItemShow(ctx context.Context, flags map[string]string,
 			info = append(info, infoS{k, v})
 		}
 
-		info = append(info, infoS{"SECRET", string(secret)})
+		if item.Data().ItemType == domain.KCItemTypeBinary {
+			if c.Filename == "" {
+				c.Filename = item.MetaDataItem(domain.KCMetaKeyFilename)
+			}
+			f, err := os.Create(c.requestFilename())
+			if err != nil {
+				return fmt.Errorf("create file error: %w", err)
+			}
+			defer func() { _ = f.Close() }()
+
+			_, err = f.Write(secret)
+			if err != nil {
+				return fmt.Errorf("write file error: %w", err)
+			}
+
+			info = append(info, infoS{"SECRET", fmt.Sprintf("  *** writed to %s ***\n", c.Filename)})
+		} else {
+			info = append(info, infoS{"SECRET", string(secret)})
+		}
 	} else {
 		return fmt.Errorf("get secret error: %w", err)
 	}

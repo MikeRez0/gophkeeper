@@ -18,19 +18,17 @@ var itemCmd = &cobra.Command{
 	// },
 }
 
+var (
+	filename string
+)
+
 func init() {
 	rootCmd.AddCommand(itemCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
 	itemCmd.PersistentFlags().String("label", "", "Item label (search value)")
 	itemCmd.PersistentFlags().String("comment", "", "Item comment (search value)")
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// itemCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	itemCmd.PersistentFlags().StringVar(&filename, "file", "", "File name for binary data (for read or save)")
 }
 
 func getQueryFlags(cmd *cobra.Command) map[string]string {
@@ -53,5 +51,6 @@ func putFlagValues(e *client.CommandExecutor) *client.CommandExecutor {
 	e.KeychainPass = keychainPass
 	e.Login = login
 	e.Password = password
+	e.Filename = filename
 	return e
 }

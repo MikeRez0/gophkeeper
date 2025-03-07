@@ -8,18 +8,29 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"text/tabwriter"
 	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/google/uuid"
+	"golang.org/x/term"
 )
 
 func (c *CommandExecutor) inputString(greeting, current string, hidden bool) string {
+	var v string
 	fmt.Printf("%s [%s]: ", greeting, current)
-	reader := bufio.NewReader(os.Stdin)
-	v, _ := reader.ReadString('\n')
-	v = v[:len(v)-1]
+	if hidden {
+		pass, err := term.ReadPassword(syscall.Stdin)
+		if err != nil {
+			return ""
+		}
+		v = string(pass)
+	} else {
+		reader := bufio.NewReader(os.Stdin)
+		v, _ = reader.ReadString('\n')
+		v = v[:len(v)-1]
+	}
 	if v == "" {
 		return current
 	} else {
@@ -44,10 +55,31 @@ func (c *CommandExecutor) inputNumber(greeting string, current, maxV int) int {
 	return *val
 }
 
-func (c *CommandExecutor) requestKeychainPass() {
+func (c *CommandExecutor) requestKeychainPass() string {
 	if c.KeychainPass == "" {
 		c.KeychainPass = c.inputString("Your keychain password", "", true)
 	}
+	return c.KeychainPass
+}
+
+func (c *CommandExecutor) requestPassword() string {
+	if c.Password == "" {
+		c.Password = c.inputString("Password", "", true)
+	}
+	return c.Password
+}
+
+func (c *CommandExecutor) requestLogin() string {
+	if c.Login == "" {
+		c.Login = c.inputString("Login", "", false)
+	}
+	return c.Login
+}
+func (c *CommandExecutor) requestFilename() string {
+	if c.Filename == "" {
+		c.Filename = c.inputString("Filename", "", false)
+	}
+	return c.Filename
 }
 
 func writeItemsList(list []*domain.KCItemData) error {

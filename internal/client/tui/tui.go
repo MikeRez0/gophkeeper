@@ -285,16 +285,21 @@ func (c *UIController) showItemForm() {
 
 		c.renderMetaData(item)
 
-		c.secretValue = secret
-		c.itemForm.AddInputField("Secret",
-			string(c.secretValue),
-			40,
-			nil, func(text string) {
-				c.secretValue = []byte(text)
-			})
-
+		if item.Data().ItemType != domain.KCItemTypeBinary {
+			c.secretValue = secret
+			c.itemForm.AddInputField("Secret",
+				string(c.secretValue),
+				40,
+				nil, func(text string) {
+					c.secretValue = []byte(text)
+				})
+		} else {
+			c.itemForm.AddTextView("Secret", "Work with binary secret with CLI", 50, 1, false, false)
+		}
 		c.itemForm.AddButton("OK", func() {
-			_ = c.app.StoreSecret(item, c.secretValue, c.keychainPassword)
+			if item.Data().ItemType != domain.KCItemTypeBinary {
+				_ = c.app.StoreSecret(item, c.secretValue, c.keychainPassword)
+			}
 
 			_, _, err := c.app.Service.KeychainSaveItem(context.Background(),
 				c.app.UserID, item.Data())

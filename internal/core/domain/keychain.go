@@ -30,12 +30,13 @@ const (
 type KeychainItemID uuid.UUID
 
 const (
-	KCMetaKeyComment = "Comment"
-	KCMetaKeyLogin   = "Login"
-	KCMetaKeySite    = "Site"
-	KCMetaKeyIssuer  = "Issuer"
-	KCMetaKeyOwner   = "Owner"
-	KCMetaKeyValidTo = "ValidTo"
+	KCMetaKeyComment  = "Comment"
+	KCMetaKeyLogin    = "Login"
+	KCMetaKeySite     = "Site"
+	KCMetaKeyIssuer   = "Issuer"
+	KCMetaKeyOwner    = "Owner"
+	KCMetaKeyValidTo  = "ValidTo"
+	KCMetaKeyFilename = "Filename"
 )
 
 type KeychainItemMeta map[string]string
