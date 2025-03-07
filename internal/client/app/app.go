@@ -22,9 +22,9 @@ type ClientApp struct {
 	enc      *encrypter.Encrypter
 	dec      *encrypter.Decrypter
 	Log      *zap.Logger
-	token    string
 	Service  port.IKeychainDataService
 	SyncTime time.Time
+	token    string
 	UserID   domain.UserID
 }
 
