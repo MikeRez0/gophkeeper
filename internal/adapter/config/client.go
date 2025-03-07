@@ -19,6 +19,7 @@ type ConfigClient struct {
 	App                 *App      `json:"app"`
 	Database            *Database `json:"database"`
 	HostString          string    `env:"ADDRESS" json:"address"`
+	TLSCertFile         string    `env:"TLS_CERTFILE" json:"tls_cert"`
 	SyncInterval        time.Duration
 	SyncIntervalSeconds int  `json:"sync_interval"` //env:"SYNC_INTERVAL"
 	GRPC                bool `env:"GRPC_MODE" json:"grpc_mode"`

@@ -3,10 +3,13 @@ package app
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
@@ -18,19 +21,39 @@ import (
 )
 
 type ClientApp struct {
-	config   *config.ConfigClient
-	enc      *encrypter.Encrypter
-	dec      *encrypter.Decrypter
-	Log      *zap.Logger
-	Service  port.IKeychainDataService
-	SyncTime time.Time
-	token    string
-	UserID   domain.UserID
+	config     *config.ConfigClient
+	enc        *encrypter.Encrypter
+	dec        *encrypter.Decrypter
+	Log        *zap.Logger
+	httpClient *http.Client
+	Service    port.IKeychainDataService
+	SyncTime   time.Time
+	token      string
+	UserID     domain.UserID
 }
 
 const cKeySize = 32
 
 func NewApp(config *config.ConfigClient, service port.IKeychainDataService, log *zap.Logger) (*ClientApp, error) {
+	caCertPool := x509.NewCertPool()
+	if config.TLSCertFile != "" {
+		caCert, err := os.ReadFile(config.TLSCertFile)
+		if err != nil {
+			return nil, fmt.Errorf("read cert file error: %w", err)
+		}
+
+		caCertPool.AppendCertsFromPEM(caCert)
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:    caCertPool,
+				MinVersion: tls.VersionTLS12,
+			},
+		},
+	}
+
 	enc, err := encrypter.NewEncrypter(log, cKeySize)
 	if err != nil {
 		return nil, fmt.Errorf("error creating encrypter: %w", err)
@@ -41,13 +64,14 @@ func NewApp(config *config.ConfigClient, service port.IKeychainDataService, log 
 	}
 
 	return &ClientApp{
-		config:   config,
-		Log:      log,
-		enc:      enc,
-		dec:      dec,
-		Service:  service,
-		SyncTime: time.Time{},
-		UserID:   domain.UserID(0),
+		config:     config,
+		Log:        log,
+		httpClient: client,
+		enc:        enc,
+		dec:        dec,
+		Service:    service,
+		SyncTime:   time.Time{},
+		UserID:     domain.UserID(0),
 	}, nil
 }
 
@@ -127,7 +151,7 @@ func (a *ClientApp) doRequest(ctx context.Context, path string, method string, d
 
 	req = req.WithContext(ctx)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := a.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error on %s : %w", req.URL, err)
 	}

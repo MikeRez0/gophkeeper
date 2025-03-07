@@ -20,7 +20,7 @@ func NewLogger(conf *config.App) *zap.Logger {
 
 		var options []zap.Option
 		if conf.LogLevel == "debug" {
-			options = append(options, zap.AddStacktrace(zap.DebugLevel))
+			options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 		} else {
 			options = append(options, zap.AddStacktrace(zap.FatalLevel))
 		}

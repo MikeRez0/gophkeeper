@@ -24,9 +24,18 @@ func main() {
 		Subject: pkix.Name{
 			Organization: []string{"GophCorp LLC"},
 			Country:      []string{"RU"},
+			CommonName:   "localhost:8888",
 		},
+		// ExtraExtensions: []pkix.Extension{
+		// 	{
+		// 		Id:       asn1.ObjectIdentifier{2, 5, 29, 17},
+		// 		Critical: false,
+		// 		Value:    []byte("URI:https://localhost"),
+		// 	},
+		// },
 		// разрешаем использование сертификата для 127.0.0.1 и ::1
 		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		IsCA:        true,
 		// сертификат верен, начиная со времени создания
 		NotBefore: time.Now(),
 		// время жизни сертификата — 10 лет
