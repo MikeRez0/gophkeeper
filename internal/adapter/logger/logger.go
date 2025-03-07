@@ -18,7 +18,14 @@ func NewLogger(conf *config.App) *zap.Logger {
 		cfg.Level = lvl
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 
-		logger := zap.Must(cfg.Build())
+		var options []zap.Option
+		if conf.LogLevel == "debug" {
+			options = append(options, zap.AddStacktrace(zap.DebugLevel))
+		} else {
+			options = append(options, zap.AddStacktrace(zap.FatalLevel))
+		}
+
+		logger := zap.Must(cfg.Build(options...))
 
 		return logger
 	} else {

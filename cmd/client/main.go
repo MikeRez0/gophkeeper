@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"runtime"
 
-	"github.com/MikeRez0/gophkeeper/internal/client"
+	"github.com/MikeRez0/gophkeeper/cmd/client/cmd"
 )
 
 var buildVersion string
@@ -29,10 +28,6 @@ func main() {
 	if buildCommit == "" {
 		buildCommit = "N/A"
 	}
-	fmt.Printf(cBuildInfoTemplate, buildVersion, buildDate, buildCommit, runtime.GOOS, runtime.GOARCH)
 
-	err := client.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
+	cmd.Execute(fmt.Sprintf(cBuildInfoTemplate, buildVersion, buildDate, buildCommit, runtime.GOOS, runtime.GOARCH))
 }

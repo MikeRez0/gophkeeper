@@ -2,13 +2,10 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
-	"time"
 )
 
 const cConfigFilenameUsage = "config filename"
@@ -81,44 +78,4 @@ func parseConfig[T ConfigClient | ConfigServer](filename string, conf *T) error 
 	}
 
 	return nil
-}
-
-func lookupEnvDuration(env string, val *Duration) error {
-	if v, ok := os.LookupEnv(env); ok {
-		i, err := strconv.ParseUint(v, 10, 64)
-		if err != nil {
-			return fmt.Errorf("error parsing env param %s: %w", env, err)
-		}
-		*val = Duration{time.Duration(i) * time.Second}
-	}
-	return nil
-}
-
-type Duration struct {
-	time.Duration
-}
-
-func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String()) //nolint:wrapcheck // all ok
-}
-
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err //nolint:wrapcheck // all ok
-	}
-	switch value := v.(type) {
-	case float64:
-		d.Duration = time.Duration(value)
-		return nil
-	case string:
-		var err error
-		d.Duration, err = time.ParseDuration(value)
-		if err != nil {
-			return err //nolint:wrapcheck // all ok
-		}
-		return nil
-	default:
-		return errors.New("invalid duration")
-	}
 }
