@@ -104,7 +104,7 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 
 	err := pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
 		var oldItem *domain.KCItemData
-		if items, err := r.selectKeychainItems(ctx, tx, item.KeyChainID, item.ID, time.Time{}, true); err == nil {
+		if items, err := r.selectKeychainItems(ctx, tx, item.KeyChainID, item.ID, time.Time{}, time.Time{}, true); err == nil {
 			if len(items) > 0 {
 				oldItem = items[0]
 			}
@@ -206,7 +206,7 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 
 func (r *KeychainPgRepository) KeychainItemSelect(ctx context.Context, keyChainID domain.KeychainID,
 	itemID domain.KeychainItemID) (*domain.KCItemData, error) {
-	items, err := r.selectKeychainItems(ctx, r.db.Pool, keyChainID, itemID, time.Time{}, false)
+	items, err := r.selectKeychainItems(ctx, r.db.Pool, keyChainID, itemID, time.Time{}, time.Time{}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -214,14 +214,14 @@ func (r *KeychainPgRepository) KeychainItemSelect(ctx context.Context, keyChainI
 }
 
 func (r *KeychainPgRepository) KeychainGetItemsSince(ctx context.Context, keyChainID domain.KeychainID,
-	since time.Time) ([]*domain.KCItemData, error) {
-	return r.selectKeychainItems(ctx, r.db, keyChainID, domain.KeychainItemID(uuid.Nil), since, false)
+	sinceClient time.Time, sinceServer time.Time) ([]*domain.KCItemData, error) {
+	return r.selectKeychainItems(ctx, r.db, keyChainID, domain.KeychainItemID(uuid.Nil), sinceClient, sinceServer, false)
 }
 
 func (r *KeychainPgRepository) selectKeychainItems(ctx context.Context, tx queryAble,
 	keyChainID domain.KeychainID,
 	itemID domain.KeychainItemID,
-	since time.Time,
+	sinceClient time.Time, sinceServer time.Time,
 	forUpdate bool) ([]*domain.KCItemData, error) {
 	statement := r.db.QueryBuilder.
 		Select("id", "keychain_id", "item_type", "label", "enc_key", "enc_value", "client_ts", "server_ts").
@@ -232,8 +232,11 @@ func (r *KeychainPgRepository) selectKeychainItems(ctx context.Context, tx query
 		statement = statement.Where(sq.Eq{"id": itemID})
 	}
 
-	if !since.IsZero() {
-		statement = statement.Where(sq.GtOrEq{"server_ts": since})
+	if !sinceClient.IsZero() {
+		statement = statement.Where(sq.Gt{"client_ts": sinceClient})
+	}
+	if !sinceServer.IsZero() {
+		statement = statement.Where(sq.Gt{"server_ts": sinceServer})
 	}
 
 	statement = statement.OrderBy("client_ts desc")

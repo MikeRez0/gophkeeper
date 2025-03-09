@@ -56,7 +56,7 @@ func (c *CommandExecutor) sync(ctx context.Context) error {
 	}
 
 	fmt.Print("Start synchronisation... ")
-	err := c.app.SyncKeychains(ctx)
+	_, err := c.app.SyncKeychains(ctx)
 	if err != nil {
 		fmt.Println("failed")
 		c.app.Log.Error("sync error", zap.Error(err))
@@ -124,7 +124,12 @@ func (c *CommandExecutor) KeychainList(ctx context.Context) error {
 		return fmt.Errorf("read keychain list error: %w", err)
 	}
 
-	return writeKeychainList(list)
+	err = writeKeychainList(list)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *CommandExecutor) ItemList(ctx context.Context, flags map[string]string) error {
@@ -144,7 +149,12 @@ func (c *CommandExecutor) ItemList(ctx context.Context, flags map[string]string)
 		return fmt.Errorf("read local items error: %w", err)
 	}
 
-	return writeItemsList(list)
+	err = writeItemsList(list)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *CommandExecutor) ItemStore(ctx context.Context, flags map[string]string) error {
@@ -226,7 +236,7 @@ func (c *CommandExecutor) ItemStore(ctx context.Context, flags map[string]string
 
 	fmt.Println("Item saved")
 
-	return nil
+	return c.preCommand(ctx)
 }
 
 func (c *CommandExecutor) ItemShow(ctx context.Context, flags map[string]string, onlySecret bool) error {
@@ -297,5 +307,10 @@ func (c *CommandExecutor) ItemShow(ctx context.Context, flags map[string]string,
 		return fmt.Errorf("get secret error: %w", err)
 	}
 
-	return writeTab(info)
+	err := writeTab(info)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

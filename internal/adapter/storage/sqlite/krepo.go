@@ -160,8 +160,12 @@ func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 	}
 	// check: if rows affected is 0, then need to return actual record from database
 	if rows == 0 {
-		//TODO: fill item from database
-		return item, false, nil
+		items, err := r.selectKeychainItems(ctx, tx, item.KeyChainID, item.ID, time.Time{}, time.Time{})
+		if err := wrapSQLErr(err); err != nil {
+			return nil, false, err
+		}
+
+		return items[0], false, nil
 	}
 
 	deleteSt := r.db.QueryBuilder.
@@ -203,7 +207,7 @@ func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 
 func (r *KeychainSqliteRepository) KeychainItemSelect(ctx context.Context, keyChainID domain.KeychainID,
 	itemID domain.KeychainItemID) (*domain.KCItemData, error) {
-	items, err := r.selectKeychainItems(ctx, r.db, keyChainID, itemID, time.Time{})
+	items, err := r.selectKeychainItems(ctx, r.db, keyChainID, itemID, time.Time{}, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -211,14 +215,15 @@ func (r *KeychainSqliteRepository) KeychainItemSelect(ctx context.Context, keyCh
 }
 
 func (r *KeychainSqliteRepository) KeychainGetItemsSince(ctx context.Context, keyChainID domain.KeychainID,
-	since time.Time) ([]*domain.KCItemData, error) {
-	return r.selectKeychainItems(ctx, r.db, keyChainID, domain.KeychainItemID(uuid.Nil), since)
+	sinceClient time.Time, sinceServer time.Time) ([]*domain.KCItemData, error) {
+	return r.selectKeychainItems(ctx, r.db, keyChainID, domain.KeychainItemID(uuid.Nil), sinceClient, sinceServer)
 }
 
 func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx queryAble,
 	keyChainID domain.KeychainID,
 	itemID domain.KeychainItemID,
-	since time.Time) ([]*domain.KCItemData, error) {
+	sinceClient time.Time,
+	sinceServer time.Time) ([]*domain.KCItemData, error) {
 	statement := r.db.QueryBuilder.
 		Select("id", "keychain_id", "item_type", "label", "enc_key", "enc_value", "client_ts", "server_ts").
 		From("keychain_item").
@@ -228,8 +233,11 @@ func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx q
 		statement = statement.Where(sq.Eq{"id": itemID})
 	}
 
-	if !since.IsZero() {
-		statement = statement.Where(sq.GtOrEq{"server_ts": since})
+	if !sinceClient.IsZero() {
+		statement = statement.Where(sq.Gt{"client_ts": sinceClient})
+	}
+	if !sinceServer.IsZero() {
+		statement = statement.Where(sq.Gt{"server_ts": sinceServer})
 	}
 
 	statement = statement.OrderBy("client_ts desc")

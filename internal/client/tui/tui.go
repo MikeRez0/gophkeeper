@@ -21,7 +21,7 @@ const (
 	cPageLogin     = "login"
 )
 
-type UIController struct {
+type UIController struct { //nolint:govet // for comfortable work
 	log *zap.Logger
 	app *app.ClientApp
 
@@ -102,16 +102,7 @@ func (c *UIController) buildUI() {
 			}
 		case event.Rune() == 's':
 			if c.itemsList.HasFocus() || c.keychainList.HasFocus() {
-				err := c.app.SyncKeychains(context.Background())
-				if err != nil {
-					c.log.Error("sync error", zap.Error(err))
-					c.writeLog("sync error", err)
-				} else {
-					c.writeLog("successfull synced", nil)
-				}
-				if c.keychainID != domain.KeychainID(uuid.Nil) {
-					c.showItems()
-				}
+				c.sync()
 			}
 		}
 		return event
@@ -139,15 +130,7 @@ func (c *UIController) buildUI() {
 			}
 		case event.Rune() == 's':
 			if c.itemsList.HasFocus() || c.keychainList.HasFocus() {
-				err := c.app.SyncKeychains(context.Background())
-				if err != nil {
-					c.writeLog("sync error", err)
-				} else {
-					c.writeLog("successfull synced", nil)
-				}
-				if c.keychainID != domain.KeychainID(uuid.Nil) {
-					c.showItems()
-				}
+				c.sync()
 			}
 		case event.Key() == tcell.KeyLeft || event.Key() == tcell.KeyEscape:
 			if c.itemsList.HasFocus() {
@@ -164,10 +147,52 @@ func (c *UIController) buildUI() {
 	c.pages.AddPage(cPageItemsList, pItems, true, false)
 }
 
-func (c *UIController) showKeychainList() {
-	c.keychainID = domain.KeychainID{}
-	c.itemsList.Clear()
+func (c *UIController) scheduleSync(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
 
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				c.sync()
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (c *UIController) sync() {
+	ctx := context.Background()
+
+	syncChan, err := c.app.RunSync(ctx)
+	if err != nil {
+		c.writeLog("run sync error", err)
+	} else {
+		c.writeLog("sync started", nil)
+
+		go func() {
+			syncStatus := <-syncChan
+			c.uiapp.QueueUpdateDraw(func() {
+				if syncStatus.Error != nil {
+					c.writeLog("sync error", err)
+				} else {
+					c.writeLog("sync done "+
+						fmt.Sprintf("uploaded: %d, downloaded: %d, force updated: %d",
+							syncStatus.SyncTaskResult.Uploaded,
+							syncStatus.SyncTaskResult.Downloaded,
+							syncStatus.SyncTaskResult.UpdatedForNewerVersion),
+						nil)
+					c.update()
+				}
+			})
+		}()
+	}
+}
+
+func (c *UIController) update() {
+	// render keychain list
 	c.keychainList.Clear()
 	c.keychainList.ShowSecondaryText(false)
 
@@ -191,6 +216,40 @@ func (c *UIController) showKeychainList() {
 	}
 
 	c.keychainList.SetCurrentItem(selected)
+
+	// render items list
+	c.itemsList.Clear()
+	ctx := context.Background()
+
+	list, err := c.app.Service.KeychainGetItemsSince(ctx, 0, c.keychainID, time.Time{})
+	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
+		c.writeLog("read list error", err)
+		return
+	}
+
+	selected = 0
+	for i, item := range list {
+		c.itemsList.AddItem(
+			fmt.Sprintf("%v: %s", i, item.Label),
+			fmt.Sprintf("[%s] %s", item.ItemType, item.MetaData[domain.KCMetaKeyComment]),
+			rune(0), func() {
+				c.keychainItemID = item.ID
+				c.showItemForm()
+			})
+		if item.ID == c.keychainItemID {
+			selected = i
+		}
+	}
+
+	c.itemsList.SetCurrentItem(selected)
+}
+
+func (c *UIController) showKeychainList() {
+	c.keychainID = domain.KeychainID{}
+	c.itemsList.Clear()
+
+	c.update()
+
 	c.pages.SwitchToPage(cPageKeychain)
 	c.uiapp.SetFocus(c.keychainList)
 }
@@ -201,24 +260,7 @@ func (c *UIController) showItems() {
 	c.itemForm.Clear(true)
 	c.resetKeychainItem()
 
-	c.itemsList.Clear()
-	ctx := context.Background()
-
-	list, err := c.app.Service.KeychainGetItemsSince(ctx, 0, c.keychainID, time.Time{})
-	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
-		c.writeLog("read list error", err)
-		return
-	}
-
-	for i, item := range list {
-		c.itemsList.AddItem(
-			fmt.Sprintf("%v: %s", i, item.Label),
-			fmt.Sprintf("[%s] %s", item.ItemType, item.MetaData[domain.KCMetaKeyComment]),
-			rune(0), func() {
-				c.keychainItemID = item.ID
-				c.showItemForm()
-			})
-	}
+	c.update()
 
 	c.uiapp.SetFocus(c.itemsList)
 }
@@ -385,10 +427,8 @@ func (c *UIController) showLoginForm() {
 				return
 			}
 
-			err = c.app.SyncKeychains(context.Background())
-			if err != nil {
-				c.writeLog("sync keychain error", err)
-				return
+			if c.app.SyncInterval != time.Duration(0) {
+				c.scheduleSync(ctx, c.app.SyncInterval)
 			}
 
 			c.showKeychainList()
@@ -413,6 +453,10 @@ func (c *UIController) showLoginForm() {
 				return
 			}
 
+			if c.app.SyncInterval != time.Duration(0) {
+				c.scheduleSync(ctx, c.app.SyncInterval)
+			}
+
 			c.showKeychainList()
 		})
 
@@ -435,10 +479,10 @@ func (c *UIController) showLoginForm() {
 
 func (c *UIController) writeLog(message string, err error) {
 	if err != nil {
-		// c.log.Error(message, zap.Error(err))
-		_, _ = fmt.Fprintf(c.logView, "%s: %v\n", message, err)
+		// 2006.01.02 15:04:05
+		_, _ = fmt.Fprintf(c.logView, "%s %s: %v\n", time.Now().Format(time.TimeOnly), message, err)
 	} else {
-		_, _ = fmt.Fprintln(c.logView, message)
+		_, _ = fmt.Fprintln(c.logView, time.Now().Format(time.TimeOnly)+" "+message)
 	}
 	c.logView.ScrollToEnd()
 }

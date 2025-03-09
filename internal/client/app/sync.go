@@ -27,14 +27,14 @@ func (a *ClientApp) FetchKeychainList(ctx context.Context) ([]*domain.KCData, er
 	return keychainList, nil
 }
 
-func (a *ClientApp) SyncKeychains(ctx context.Context) error {
+func (a *ClientApp) SyncKeychains(ctx context.Context) (*syncTaskResult, error) {
 	keychainList, err := a.Service.KeychainList(ctx, a.UserID)
 	if err != nil {
-		return fmt.Errorf("get keychain list error: %w", err)
+		return nil, fmt.Errorf("get keychain list error: %w", err)
 	}
 	serverList, err := a.FetchKeychainList(ctx)
 	if err != nil {
-		return fmt.Errorf("fetch keychain list error: %w", err)
+		return nil, fmt.Errorf("fetch keychain list error: %w", err)
 	}
 
 	for _, s := range serverList {
@@ -43,9 +43,11 @@ func (a *ClientApp) SyncKeychains(ctx context.Context) error {
 		}
 		_, err := a.Service.KeychainSave(ctx, a.UserID, s)
 		if err != nil {
-			return fmt.Errorf("keychain header save error: %w", err)
+			return nil, fmt.Errorf("keychain header save error: %w", err)
 		}
 	}
+
+	syncResult := syncTaskResult{}
 
 	// Save current time for next sync time offset
 	syncTime := time.Now().UTC()
@@ -57,43 +59,96 @@ func (a *ClientApp) SyncKeychains(ctx context.Context) error {
 			http.MethodPost,
 			keychain)
 		if err != nil {
-			return fmt.Errorf("error on keychain data sync: %w", err)
+			return nil, fmt.Errorf("error on keychain data sync: %w", err)
 		}
 
-		// Keychain items sync
-		items, err := a.Service.KeychainGetItemsSince(ctx, a.UserID, keychain.ID, a.SyncTime)
+		// Keychain localItems sync
+		localItems, err := a.Service.KeychainGetItemsSince(ctx, a.UserID, keychain.ID, a.syncTime)
 		if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
-			return fmt.Errorf("get items error: %w", err)
+			return nil, fmt.Errorf("get items error: %w", err)
 		}
 
 		query := ""
-		if !a.SyncTime.IsZero() {
-			query = "?from_time=" + a.SyncTime.Format(time.RFC3339)
+		if !a.syncTime.IsZero() {
+			query = "?from_time=" + a.syncTime.Format(time.RFC3339)
 		}
+
+		syncResult.Uploaded = len(localItems)
 
 		data, err := a.doRequest(ctx,
 			"/api/keychain/"+keychain.ID.String()+"/sync"+query,
 			http.MethodPost,
-			items,
+			localItems,
 		)
 		if err != nil {
-			return fmt.Errorf("error on keychain items sync: %w", err)
+			return nil, fmt.Errorf("error on keychain items sync: %w", err)
 		}
 
-		clear(items)
+		serverItems := make([]*domain.KCItemData, 0)
 
-		err = json.Unmarshal(data, &items)
+		err = json.Unmarshal(data, &serverItems)
 		if err != nil {
-			return fmt.Errorf("error unmarshalling items:%w", err)
+			return nil, fmt.Errorf("error unmarshalling items:%w", err)
 		}
 
-		_, err = a.Service.Sync(ctx, a.UserID, keychain.ID, time.Time{}, items)
+		syncResult.Downloaded = len(serverItems)
+
+		for _, i := range serverItems {
+			if slices.ContainsFunc(localItems, func(v *domain.KCItemData) bool { return v.ID == i.ID }) {
+				syncResult.UpdatedForNewerVersion++
+			}
+		}
+
+		_, err = a.Service.Sync(ctx, a.UserID, keychain.ID, time.Time{}, serverItems)
 		if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
-			return fmt.Errorf("error saving to local storage: %w", err)
+			return nil, fmt.Errorf("error saving to local storage: %w", err)
 		}
 	}
 	// Save sync time for next iteration
-	a.SyncTime = syncTime
+	a.syncTime = syncTime
 
-	return nil
+	return &syncResult, nil
+}
+
+type syncTaskResult struct {
+	Uploaded               int
+	Downloaded             int
+	UpdatedForNewerVersion int
+}
+
+type syncTaskStatus struct {
+	Error          error
+	Finished       bool
+	SyncTaskResult syncTaskResult
+}
+
+var (
+	ErrSyncActive = errors.New("can't start new sync proccess, it's already active")
+)
+
+func (a *ClientApp) RunSync(ctx context.Context) (chan syncTaskStatus, error) {
+	if a.syncActive.Load() {
+		return nil, ErrSyncActive
+	}
+
+	c := make(chan syncTaskStatus)
+	go func() {
+		a.syncActive.Store(true)
+		res, err := a.SyncKeychains(ctx)
+		if err != nil {
+			c <- syncTaskStatus{
+				Finished: true,
+				Error:    fmt.Errorf("sync error: %w", err),
+			}
+		} else {
+			c <- syncTaskStatus{
+				Finished:       true,
+				SyncTaskResult: *res,
+			}
+		}
+		close(c)
+		a.syncActive.Store(false)
+	}()
+
+	return c, nil
 }

@@ -99,7 +99,17 @@ func (s *KeychainDataService) KeychainGetItemsSince(ctx context.Context,
 		return nil, domain.ErrForbidden
 	}
 
-	items, err := s.repo.KeychainGetItemsSince(ctx, keychainID, since)
+	var (
+		sinceClient time.Time
+		sinceServer time.Time
+	)
+	if s.localMode {
+		sinceClient = since
+	} else {
+		sinceServer = since
+	}
+
+	items, err := s.repo.KeychainGetItemsSince(ctx, keychainID, sinceClient, sinceServer)
 	if err != nil {
 		return nil, err
 	}

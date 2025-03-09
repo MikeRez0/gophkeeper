@@ -196,6 +196,25 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				return assertItemEq(t, &ki1, k)
 			},
 		},
+		{
+			name: "Update keychain item 1 (not update, return newer version)",
+			run: func() error {
+				kiNew := domain.KCItemData{
+					ID:         ki1.ID,
+					KeyChainID: ki1.KeyChainID,
+					Label:      "MUST NOT UPDATED",
+					ClientTime: ki1.ClientTime.Add(-1 * time.Minute),
+				}
+				k, updated, err := repo.KeychainItemUpsert(ctx, &kiNew)
+				assert.NoError(t, err)
+				if !assert.NotNil(t, k) {
+					return errors.New("keychain item is nil")
+				}
+				assert.False(t, updated)
+
+				return assertItemEq(t, &ki1, k)
+			},
+		},
 	}
 
 	for _, test := range tests {
