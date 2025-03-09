@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
@@ -21,15 +22,17 @@ import (
 )
 
 type ClientApp struct {
-	config     *config.ConfigClient
-	enc        *encrypter.Encrypter
-	dec        *encrypter.Decrypter
-	Log        *zap.Logger
-	httpClient *http.Client
-	Service    port.IKeychainDataService
-	SyncTime   time.Time
-	token      string
-	UserID     domain.UserID
+	config       *config.ConfigClient
+	enc          *encrypter.Encrypter
+	dec          *encrypter.Decrypter
+	Log          *zap.Logger
+	httpClient   *http.Client
+	Service      port.IKeychainDataService
+	syncTime     time.Time
+	token        string
+	SyncInterval time.Duration
+	UserID       domain.UserID
+	syncActive   atomic.Bool
 }
 
 const cKeySize = 32
@@ -64,14 +67,15 @@ func NewApp(config *config.ConfigClient, service port.IKeychainDataService, log 
 	}
 
 	return &ClientApp{
-		config:     config,
-		Log:        log,
-		httpClient: client,
-		enc:        enc,
-		dec:        dec,
-		Service:    service,
-		SyncTime:   time.Time{},
-		UserID:     domain.UserID(0),
+		config:       config,
+		SyncInterval: config.SyncInterval,
+		Log:          log,
+		httpClient:   client,
+		enc:          enc,
+		dec:          dec,
+		Service:      service,
+		syncTime:     time.Time{},
+		UserID:       domain.UserID(0),
 	}, nil
 }
 

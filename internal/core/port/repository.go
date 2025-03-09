@@ -26,5 +26,5 @@ type IKeychainRepository interface {
 	KeychainItemSelect(context.Context, domain.KeychainID, domain.KeychainItemID) (*domain.KCItemData, error)
 
 	KeychainGetItemsSince(ctx context.Context, keyChainID domain.KeychainID,
-		since time.Time) ([]*domain.KCItemData, error)
+		sinceClient time.Time, sinceServer time.Time) ([]*domain.KCItemData, error)
 }

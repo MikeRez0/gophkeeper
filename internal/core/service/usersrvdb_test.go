@@ -111,13 +111,13 @@ func TestServiceDB_UserLogin(t *testing.T) {
 		{
 			registerUser: true,
 			name:         "Login good",
-			user:         domain.User{Login: "test", Password: "test"},
+			user:         domain.User{Login: "testuser", Password: "test"},
 
 			expError: nil,
 		},
 		{
 			name:     "Password bad",
-			user:     domain.User{Login: "test", Password: "hacker"},
+			user:     domain.User{Login: "testuser", Password: "hacker"},
 			expError: domain.ErrInvalidCredentials,
 		},
 		{
@@ -139,7 +139,8 @@ func TestServiceDB_UserLogin(t *testing.T) {
 			assert.NoError(t, err)
 
 			if test.registerUser {
-				_, err := s.RegisterUser(context.Background(), &test.user)
+				u := domain.User{Login: test.user.Login, Password: test.user.Password}
+				_, err := s.RegisterUser(context.Background(), &u)
 				assert.NoError(t, err)
 			}
 
