@@ -2,11 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"go.uber.org/zap"
 
-	"github.com/MikeRez0/gophkeeper/internal/adapter/api/http"
+	apiHttp "github.com/MikeRez0/gophkeeper/internal/adapter/api/http"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/auth"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
 	"github.com/MikeRez0/gophkeeper/internal/adapter/logger"
@@ -45,13 +50,13 @@ func main() {
 		return
 	}
 
-	log := logger.NewLogger(conf.App)
-	if log == nil {
+	l := logger.NewLogger(conf.App)
+	if l == nil {
 		fmt.Printf("error creating log")
 		return
 	}
 	defer func() {
-		err := log.Sync()
+		err := l.Sync()
 		if err != nil {
 			fmt.Printf("log error: %s", err)
 		}
@@ -65,92 +70,112 @@ func main() {
 	if conf.Database.Driver == "postgresql" {
 		db, err := pgsql.NewDBStorage(ctx, conf.Database)
 		if err != nil {
-			log.Error("postgresql database error", zap.Error(err))
+			l.Error("postgresql database error", zap.Error(err))
 			return
 		}
 		err = db.RunMigrations()
 		if err != nil {
-			log.Error("postgresql database migration error", zap.Error(err))
+			l.Error("postgresql database migration error", zap.Error(err))
 			return
 		}
 
 		userRepo, err = pgsql.NewUserRepository(db)
 		if err != nil {
-			log.Error("user repo (postgresql) creating error", zap.Error(err))
+			l.Error("user repo (postgresql) creating error", zap.Error(err))
 			return
 		}
-		keychainRepo, err = pgsql.NewKeychainPgRepository(db, log.Named("PgRepo"))
+		keychainRepo, err = pgsql.NewKeychainPgRepository(db, l.Named("PgRepo"))
 		if err != nil {
-			log.Error("keychain repo (postgresql) creating error", zap.Error(err))
+			l.Error("keychain repo (postgresql) creating error", zap.Error(err))
 			return
 		}
 	} else {
 		db, err := sql.NewDBStorage(ctx, conf.Database)
 		if err != nil {
-			log.Error("database error", zap.Error(err))
+			l.Error("database error", zap.Error(err))
 			return
 		}
 		err = db.RunMigrations()
 		if err != nil {
-			log.Error("database migration error", zap.Error(err))
+			l.Error("database migration error", zap.Error(err))
 			return
 		}
 
-		userRepo, err = sql.NewUserRepository(db, log)
+		userRepo, err = sql.NewUserRepository(db, l)
 		if err != nil {
-			log.Error("user repo creating error", zap.Error(err))
+			l.Error("user repo creating error", zap.Error(err))
 			return
 		}
-		keychainRepo, err = sql.NewKeychainSqliteRepository(db, log.Named("SqlRepo"))
+		keychainRepo, err = sql.NewKeychainSqliteRepository(db, l.Named("SqlRepo"))
 		if err != nil {
-			log.Error("keychain repo creating error", zap.Error(err))
+			l.Error("keychain repo creating error", zap.Error(err))
 			return
 		}
 	}
 
 	tokenService, err := auth.New()
 	if err != nil {
-		log.Error("token service creating error", zap.Error(err))
+		l.Error("token service creating error", zap.Error(err))
 		return
 	}
 
-	userSrv, err := service.NewUserService(userRepo, tokenService, log.Named("UserService"))
+	userSrv, err := service.NewUserService(userRepo, tokenService, l.Named("UserService"))
 	if err != nil {
-		log.Error("order service creating error", zap.Error(err))
+		l.Error("order service creating error", zap.Error(err))
 		return
 	}
 
-	userHandler, err := http.NewUserHandler(userSrv, log.Named("User handler"))
+	userHandler, err := apiHttp.NewUserHandler(userSrv, l.Named("User handler"))
 	if err != nil {
-		log.Error("user handler creating error", zap.Error(err))
+		l.Error("user handler creating error", zap.Error(err))
 		return
 	}
 
-	keychainSrv, err := service.NewKeychainDataService(keychainRepo, log.Named("KeychainService"))
+	keychainSrv, err := service.NewKeychainDataService(keychainRepo, l.Named("KeychainService"))
 	if err != nil {
-		log.Error("keychain service creating error", zap.Error(err))
+		l.Error("keychain service creating error", zap.Error(err))
 		return
 	}
 
-	kHandler, err := http.NewKeychainHandler(keychainSrv, log.Named("Keychain handler"))
+	kHandler, err := apiHttp.NewKeychainHandler(keychainSrv, l.Named("Keychain handler"))
 	if err != nil {
-		log.Error("keychain handler creating error", zap.Error(err))
+		l.Error("keychain handler creating error", zap.Error(err))
 		return
 	}
 
-	r, err := http.NewRouter(conf.HTTP, tokenService, userHandler, kHandler, log.Named("Router"))
+	r, err := apiHttp.NewRouter(conf.HTTP, tokenService, userHandler, kHandler, l.Named("Router"))
 	if err != nil {
-		log.Error("router creating error", zap.Error(err))
+		l.Error("router creating error", zap.Error(err))
 		return
 	}
+
+	server := &http.Server{
+		Addr:    conf.HTTP.HostString,
+		Handler: r.Handler(),
+	}
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	go func() {
+		<-shutdown
+		l.Info("Start gracefull shutdown...")
+
+		err := server.Shutdown(context.Background())
+		if err != nil {
+			l.Error("error while shutdown", zap.Error(err))
+		}
+	}()
 
 	if conf.HTTP.TLSCertFile != "" && conf.HTTP.TLSKeyFile != "" {
-		err = r.RunTLS(conf.HTTP.HostString, conf.HTTP.TLSCertFile, conf.HTTP.TLSKeyFile)
+		err = server.ListenAndServeTLS(conf.HTTP.TLSCertFile, conf.HTTP.TLSKeyFile)
 	} else {
-		err = r.Serve(conf.HTTP.HostString)
+		err = server.ListenAndServe()
 	}
-	if err != nil {
-		log.Error("router serve error", zap.Error(err))
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		l.Error("router serve error", zap.Error(err))
 		return
 	}
+
+	l.Info("Server was shut down gracefully")
+	_ = l.Sync()
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/MikeRez0/gophkeeper/internal/client/app"
@@ -42,6 +45,9 @@ type UIController struct { //nolint:govet // for comfortable work
 	passForm     *tview.Form
 	loginForm    *tview.Form
 	logView      *tview.TextView
+
+	wg        sync.WaitGroup
+	jobCancel context.CancelFunc
 }
 
 func NewUIController(app *app.ClientApp, log *zap.Logger) (*UIController, error) {
@@ -150,13 +156,18 @@ func (c *UIController) buildUI() {
 func (c *UIController) scheduleSync(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 
+	ctxCancel, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	c.jobCancel = cancel
+
+	c.wg.Add(1)
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
 				c.sync()
-			case <-ctx.Done():
+			case <-ctxCancel.Done():
 				ticker.Stop()
+				c.wg.Done()
 				return
 			}
 		}
@@ -166,6 +177,7 @@ func (c *UIController) scheduleSync(ctx context.Context, interval time.Duration)
 func (c *UIController) sync() {
 	ctx := context.Background()
 
+	c.wg.Add(1)
 	syncChan, err := c.app.RunSync(ctx)
 	if err != nil {
 		c.writeLog("run sync error", err)
@@ -187,6 +199,7 @@ func (c *UIController) sync() {
 					c.update()
 				}
 			})
+			c.wg.Done()
 		}()
 	}
 }
@@ -427,6 +440,7 @@ func (c *UIController) showLoginForm() {
 				return
 			}
 
+			c.sync()
 			if c.app.SyncInterval != time.Duration(0) {
 				c.scheduleSync(ctx, c.app.SyncInterval)
 			}
@@ -493,7 +507,16 @@ func (c *UIController) Run() error {
 	c.showLoginForm()
 
 	if err := c.uiapp.SetRoot(c.pages, true).EnableMouse(false).Run(); err != nil {
+		c.shutdown()
 		return fmt.Errorf("error in UI app: %w", err)
 	}
+	c.shutdown()
 	return nil
+}
+
+func (c *UIController) shutdown() {
+	if c.jobCancel != nil {
+		c.jobCancel()
+	}
+	c.wg.Wait()
 }
