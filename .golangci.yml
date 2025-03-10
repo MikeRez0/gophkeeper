@@ -429,8 +429,8 @@ linters-settings:
       - DB
       - TS
 
-  tenv:
-    all: false
+  # tenv:
+  #   all: false
 
   thelper:
     benchmark:
@@ -523,7 +523,7 @@ linters:
     - sqlclosecheck
     - staticcheck
     - stylecheck
-    - tenv
+    # - tenv
     - testableexamples
     - thelper
     - tparallel
@@ -531,6 +531,7 @@ linters:
     - unconvert
     - unparam
     - unused
+    - usetesting
     - usestdlibvars
     - wastedassign
     - whitespace
