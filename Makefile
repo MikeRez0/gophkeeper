@@ -3,7 +3,7 @@ current_dir := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 
 .PHONY: lint
 lint:
-	-docker run --rm -v .:/source -v $(GOLANGCI_LINT_CACHE):/root/.cache -w //source golangci/golangci-lint:v1.60.3 golangci-lint run -c .golangci.yml
+	-docker run --rm -v .:/source -v $(GOLANGCI_LINT_CACHE):/root/.cache -w //source golangci/golangci-lint:v1.60.3 golangci-lint run -c .golangci.yml > ./.golangci-lint/report-unformatted.json
 	-bash -c 'cat ./.golangci-lint/report-unformatted.json | jq > ./.golangci-lint/report.json'
 
 
