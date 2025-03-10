@@ -58,7 +58,8 @@ func (config *ConfigClient) Parse() error {
 	// environment override
 	err := env.Parse(config)
 	if err != nil {
-		return fmt.Errorf("error parsing env config: %w", err)
+		// return fmt.Errorf("error parsing env config: %w", err)
+		return err
 	}
 
 	config.SyncInterval = time.Second * time.Duration(config.SyncIntervalSeconds)
