@@ -529,7 +529,7 @@ linters:
     - testableexamples
     - thelper
     - tparallel
-    - typecheck
+    # - typecheck
     - unconvert
     - unparam
     - unused
