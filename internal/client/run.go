@@ -11,7 +11,6 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/client/app"
 	"github.com/MikeRez0/gophkeeper/internal/client/tui"
 	"github.com/MikeRez0/gophkeeper/internal/core/service"
-	"go.uber.org/zap"
 )
 
 func BootstrapApp(conf *config.ConfigClient) (*app.ClientApp, error) {
@@ -29,44 +28,39 @@ func BootstrapApp(conf *config.ConfigClient) (*app.ClientApp, error) {
 
 	db, err := sqlite.NewDBStorage(ctx, conf.Database)
 	if err != nil {
-		log.Error("error creating database app", zap.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("error creating database app: %w", err)
 	}
 	err = db.RunMigrations()
 	if err != nil {
-		log.Error("error running database migration", zap.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("error running database migration: %w", err)
 	}
 
 	repo, err := sqlite.NewKeychainSqliteRepository(db, log.Named("repo"))
 	if err != nil {
-		log.Error("error creating keychain repo", zap.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("error creating keychain repo: %w", err)
 	}
 
 	srv, err := service.NewKeychainDataService(repo, log.Named("service"))
 	if err != nil {
-		log.Error("error creating keychain service", zap.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("error creating keychain service: %w", err)
 	}
 	srv.SetLocalMode(true)
 
-	app, err := app.NewApp(conf, srv, log)
+	a, err := app.NewApp(conf, srv, log)
 	if err != nil {
-		log.Error("error creating client app", zap.Error(err))
-		return nil, err
+		return nil, fmt.Errorf("error creating client app: %w", err)
 	}
 
-	return app, nil
+	return a, nil
 }
 
 func RunTUI(conf *config.ConfigClient) error {
-	app, err := BootstrapApp(conf)
+	a, err := BootstrapApp(conf)
 	if err != nil {
 		return fmt.Errorf("bootstrap app error: %w", err)
 	}
 
-	c, err := tui.NewUIController(app, app.Log.Named("tui"))
+	c, err := tui.NewUIController(a, a.Log.Named("tui"))
 	if err != nil {
 		return fmt.Errorf("error creating TUI: %w", err)
 	}

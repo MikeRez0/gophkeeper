@@ -18,18 +18,18 @@ import (
 type CommandExecutor struct {
 	app *app.ClientApp
 
-	keychainID domain.KeychainID
-
-	OfflineMode  bool
 	Login        string
 	Password     string
 	Token        string
 	KeychainPass string
 	Filename     string
+
+	keychainID  domain.KeychainID
+	OfflineMode bool
 }
 
-func NewCommandExecutor(app *app.ClientApp) *CommandExecutor {
-	return &CommandExecutor{app: app, OfflineMode: false}
+func NewCommandExecutor(a *app.ClientApp) *CommandExecutor {
+	return &CommandExecutor{app: a, OfflineMode: false}
 }
 
 func (c *CommandExecutor) preCommand(ctx context.Context) error {
@@ -49,7 +49,7 @@ func (c *CommandExecutor) sync(ctx context.Context) error {
 		if err != nil {
 			fmt.Println("failed")
 			c.app.Log.Error("connection error", zap.Error(err))
-			return err
+			return fmt.Errorf("connection error: %w", err)
 		} else {
 			fmt.Println("done")
 		}
@@ -60,7 +60,7 @@ func (c *CommandExecutor) sync(ctx context.Context) error {
 	if err != nil {
 		fmt.Println("failed")
 		c.app.Log.Error("sync error", zap.Error(err))
-		return err
+		return fmt.Errorf("sync error: %w", err)
 	} else {
 		fmt.Println("done")
 	}

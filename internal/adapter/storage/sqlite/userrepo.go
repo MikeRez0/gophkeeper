@@ -45,7 +45,7 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*do
 		Values(user.Login, user.Password)
 
 	sqlstr, args, err := userSt.ToSql()
-	if err != nil {
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 
@@ -75,7 +75,7 @@ func (r *UserRepository) selectUser(ctx context.Context, tx queryAble, login str
 		Where(sq.Eq{"login": login})
 
 	sqlstr, args, err := statement.ToSql()
-	if err != nil {
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 

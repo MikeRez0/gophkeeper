@@ -35,5 +35,4 @@ func NewLogger(conf *config.App) *zap.Logger {
 
 		return logger
 	}
-
 }

@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/MikeRez0/gophkeeper/internal/adapter/auth"
@@ -22,11 +23,11 @@ func getUserDeps() (port.IUserRepository, port.TokenService, error) {
 
 	repo, err := pgsql.NewUserRepository(db)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create user repo error: %w", err)
 	}
 	ts, err := auth.New()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create token service error: %w", err)
 	}
 
 	return repo, ts, nil

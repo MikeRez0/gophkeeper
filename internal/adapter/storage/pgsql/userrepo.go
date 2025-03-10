@@ -6,7 +6,6 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -37,29 +36,27 @@ func (r *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*do
 			Suffix("returning id")
 
 		sql, args, err := userSt.ToSql()
-		if err != nil {
+		if err := wrapStatmentErr(err); err != nil {
 			return err
 		}
 
 		err = tx.QueryRow(ctx, sql, args...).Scan(&(user.ID))
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return err
 		}
 
 		return nil
 	})
 
-	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
-			return nil, domain.ErrConflictingData
-		}
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 
 	return user, nil
 }
 
-func (r *UserRepository) selectUser(ctx context.Context, tx queryAble, login string, forUpdate bool) (*domain.User, error) {
+func (r *UserRepository) selectUser(ctx context.Context, tx queryAble,
+	login string, forUpdate bool) (*domain.User, error) {
 	statement := r.db.QueryBuilder.
 		Select("id", "login", "password").
 		From("users").
@@ -70,7 +67,7 @@ func (r *UserRepository) selectUser(ctx context.Context, tx queryAble, login str
 	}
 
 	sql, args, err := statement.ToSql()
-	if err != nil {
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 
@@ -81,10 +78,7 @@ func (r *UserRepository) selectUser(ctx context.Context, tx queryAble, login str
 		&user.Login,
 		&user.Password,
 	)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, domain.ErrDataNotFound
-		}
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 

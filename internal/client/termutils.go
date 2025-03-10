@@ -55,7 +55,7 @@ func (c *CommandExecutor) inputNumber(greeting string, current, maxV int) int {
 	return *val
 }
 
-func (c *CommandExecutor) requestKeychainPass() string {
+func (c *CommandExecutor) requestKeychainPass() string { //nolint:unparam // for future changes
 	if c.KeychainPass == "" {
 		c.KeychainPass = c.inputString("Your keychain password", "", true)
 	}
@@ -82,13 +82,15 @@ func (c *CommandExecutor) requestFilename() string {
 	return c.Filename
 }
 
+const cOutputError = "output error: %w"
+
 func writeItemsList(list []*domain.KCItemData) error {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 2, ' ', 0)
 
 	_, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 		"#", "Label", "Type", "Comment", "Time")
 	if err != nil {
-		return fmt.Errorf("output error: %w", err)
+		return fmt.Errorf(cOutputError, err)
 	}
 
 	for i, item := range list {
@@ -98,13 +100,13 @@ func writeItemsList(list []*domain.KCItemData) error {
 			item.MetaData[domain.KCMetaKeyComment],
 			item.ClientTime.Format("02.01.2006 15:04:05"))
 		if err != nil {
-			return fmt.Errorf("output error: %w", err)
+			return fmt.Errorf(cOutputError, err)
 		}
 	}
 
 	err = w.Flush()
 	if err != nil {
-		return fmt.Errorf("output error: %w", err)
+		return fmt.Errorf(cOutputError, err)
 	}
 	return nil
 }
@@ -115,7 +117,7 @@ func writeKeychainList(list []*domain.KCData) error {
 	_, err := fmt.Fprintf(w, "%s\t%s\t%s\n",
 		"#", "Name", "ID")
 	if err != nil {
-		return fmt.Errorf("output error: %w", err)
+		return fmt.Errorf(cOutputError, err)
 	}
 
 	for i, k := range list {
@@ -124,13 +126,13 @@ func writeKeychainList(list []*domain.KCData) error {
 			k.ID.String(),
 		)
 		if err != nil {
-			return fmt.Errorf("output error: %w", err)
+			return fmt.Errorf(cOutputError, err)
 		}
 	}
 
 	err = w.Flush()
 	if err != nil {
-		return fmt.Errorf("output error: %w", err)
+		return fmt.Errorf(cOutputError, err)
 	}
 	return nil
 }
@@ -145,12 +147,12 @@ func writeTab(list []infoS) error {
 
 	for _, i := range list {
 		if _, err := fmt.Fprintf(w, "%s\t%s\n", i.k, i.v); err != nil {
-			return fmt.Errorf("output error: %w", err)
+			return fmt.Errorf(cOutputError, err)
 		}
 	}
 
 	if err := w.Flush(); err != nil {
-		return fmt.Errorf("output error: %w", err)
+		return fmt.Errorf(cOutputError, err)
 	}
 	return nil
 }

@@ -73,7 +73,7 @@ func (k *KeychainID) Scan(value interface{}) error {
 	u := uuid.UUID(*k)
 	err := u.Scan(value)
 	if err != nil {
-		return err
+		return fmt.Errorf("scan error: %w", err)
 	}
 	*k = KeychainID(u)
 	return nil
@@ -117,7 +117,7 @@ func (k *KeychainItemID) Scan(value interface{}) error {
 	u := uuid.UUID(*k)
 	err := u.Scan(value)
 	if err != nil {
-		return err
+		return fmt.Errorf("scan error: %w", err)
 	}
 	*k = KeychainItemID(u)
 	return nil

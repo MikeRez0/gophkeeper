@@ -46,7 +46,11 @@ func authCheck(tokenService port.TokenService, logger *zap.Logger) gin.HandlerFu
 }
 
 func getAuthPayload(ctx *gin.Context) *port.TokenPayload {
-	return ctx.MustGet(userPayloadKey).(*port.TokenPayload)
+	if t, ok := ctx.MustGet(userPayloadKey).(*port.TokenPayload); ok {
+		return t
+	} else {
+		return nil
+	}
 }
 
 func logRequest(log *zap.Logger) gin.HandlerFunc {

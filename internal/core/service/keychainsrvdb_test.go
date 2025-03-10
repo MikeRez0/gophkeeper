@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
@@ -23,16 +24,16 @@ func getKeychainDeps(log *zap.Logger) (port.IKeychainRepository, error) {
 
 	urepo, err := pgsql.NewUserRepository(db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create user repo err: %w", err)
 	}
 	_, err = urepo.CreateUser(context.Background(), &domain.User{Login: "dummy"})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create user error: %w", err)
 	}
 
 	repo, err := pgsql.NewKeychainPgRepository(db, log)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create keychain repo err: %w", err)
 	}
 
 	return repo, nil

@@ -50,9 +50,9 @@ type UIController struct { //nolint:govet // for comfortable work
 	jobCancel context.CancelFunc
 }
 
-func NewUIController(app *app.ClientApp, log *zap.Logger) (*UIController, error) {
+func NewUIController(a *app.ClientApp, log *zap.Logger) (*UIController, error) {
 	c := &UIController{
-		app: app,
+		app: a,
 		log: log,
 	}
 
@@ -291,7 +291,7 @@ func (c *UIController) setKeychainItem(kid domain.KeychainItemID) error {
 				c.keychainID, c.keychainItemID)
 			if err != nil {
 				c.writeLog("error reading item", err)
-				return err
+				return fmt.Errorf("error reading item: %w", err)
 			}
 			c.keychainItem = keychain.NewKeychainItemFromData(data)
 			c.keychainItemID = c.keychainItem.Data().ID

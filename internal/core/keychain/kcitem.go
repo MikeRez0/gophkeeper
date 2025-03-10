@@ -68,7 +68,7 @@ func fillMetaData(item *domain.KCItemData) {
 	if _, ok := item.MetaData[domain.KCMetaKeyComment]; !ok {
 		item.MetaData[domain.KCMetaKeyComment] = ""
 	}
-	switch item.ItemType {
+	switch item.ItemType { //nolint:exhaustive // not all cases needed
 	case domain.KCItemTypePassword:
 		if _, ok := item.MetaData[domain.KCMetaKeyLogin]; !ok {
 			item.MetaData[domain.KCMetaKeyLogin] = ""

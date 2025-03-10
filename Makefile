@@ -1,8 +1,8 @@
 GOLANGCI_LINT_CACHE?=praktikum-golangci-lint-cache
 current_dir := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 
-.PHONY: golangci-lint-run
-golangci-lint-run:
+.PHONY: lint
+lint:
 	-docker run --rm -v .:/source -v $(GOLANGCI_LINT_CACHE):/root/.cache -w //source golangci/golangci-lint golangci-lint run -c .golangci.yml
 	-bash -c 'cat ./.golangci-lint/report-unformatted.json | jq > ./.golangci-lint/report.json'
 

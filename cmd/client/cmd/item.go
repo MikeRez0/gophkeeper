@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -8,14 +5,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// itemCmd represents the item command
 var itemCmd = &cobra.Command{
 	Use:   "item",
 	Short: "Work with keychain items",
 	Long:  `Work with keychain items`,
-	// Run: func(cmd *cobra.Command, args []string) {
-	// 	fmt.Println("item called")
-	// },
 }
 
 var (

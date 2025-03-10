@@ -39,6 +39,8 @@ var (
 	keychainName string
 )
 
+const cAppStartErrorText = "start app error: %w"
+
 func init() {
 	appConfig = config.NewConfigClient()
 

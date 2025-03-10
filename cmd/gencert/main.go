@@ -16,6 +16,13 @@ import (
 )
 
 func main() {
+	err := run()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	// создаём шаблон сертификата
 	cert := &x509.Certificate{
 		// указываем уникальный номер сертификата
@@ -52,46 +59,55 @@ func main() {
 	// используется rand.Reader в качестве источника случайных данных
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("generate key error: %w", err)
 	}
 
 	// создаём сертификат x.509
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("create certificate error: %w", err)
 	}
 
 	// кодируем сертификат и ключ в формате PEM, который
 	// используется для хранения и обмена криптографическими ключами
 	var certPEM bytes.Buffer
-	pem.Encode(&certPEM, &pem.Block{
+	err = pem.Encode(&certPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
+	if err != nil {
+		return fmt.Errorf("error encoding certificate : %w", err)
+	}
+
 	fc, err := os.Create(os.Args[1])
 	if err != nil {
-		log.Fatal(fmt.Errorf("error creating cert file: %w", err))
+		return fmt.Errorf("error creating cert file: %w", err)
 	}
 	defer func() { _ = fc.Close() }()
 	_, err = fc.Write(certPEM.Bytes())
 	if err != nil {
-		log.Fatal(fmt.Errorf("error writing cert file: %w", err))
+		return fmt.Errorf("error writing cert file: %w", err)
 	}
 
 	var privateKeyPEM bytes.Buffer
-	pem.Encode(&privateKeyPEM, &pem.Block{
+	err = pem.Encode(&privateKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
+	if err != nil {
+		return fmt.Errorf("error encoding private key : %w", err)
+	}
 
 	fk, err := os.Create(os.Args[2])
 	if err != nil {
-		log.Fatal(fmt.Errorf("error creating key file: %w", err))
+		return fmt.Errorf("error creating key file: %w", err)
 	}
 	defer func() { _ = fk.Close() }()
 
 	_, err = fk.Write(privateKeyPEM.Bytes())
 	if err != nil {
-		log.Fatal(fmt.Errorf("error writing file: %w", err))
+		return fmt.Errorf("error writing file: %w", err)
 	}
+
+	return nil
 }

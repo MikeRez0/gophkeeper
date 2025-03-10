@@ -37,10 +37,10 @@ type ClientApp struct {
 
 const cKeySize = 32
 
-func NewApp(config *config.ConfigClient, service port.IKeychainDataService, log *zap.Logger) (*ClientApp, error) {
+func NewApp(conf *config.ConfigClient, service port.IKeychainDataService, log *zap.Logger) (*ClientApp, error) {
 	caCertPool := x509.NewCertPool()
-	if config.TLSCertFile != "" {
-		caCert, err := os.ReadFile(config.TLSCertFile)
+	if conf.TLSCertFile != "" {
+		caCert, err := os.ReadFile(conf.TLSCertFile)
 		if err != nil {
 			return nil, fmt.Errorf("read cert file error: %w", err)
 		}
@@ -67,8 +67,8 @@ func NewApp(config *config.ConfigClient, service port.IKeychainDataService, log 
 	}
 
 	return &ClientApp{
-		config:       config,
-		SyncInterval: config.SyncInterval,
+		config:       conf,
+		SyncInterval: conf.SyncInterval,
 		Log:          log,
 		httpClient:   client,
 		enc:          enc,

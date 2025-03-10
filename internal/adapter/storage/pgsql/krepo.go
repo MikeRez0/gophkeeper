@@ -3,6 +3,7 @@ package pgsql
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -40,12 +41,12 @@ func (r *KeychainPgRepository) KeychainUpsert(ctx context.Context, kcdata *domai
 				Values(kcdata.ID, kcdata.OwnerID, kcdata.Name)
 
 			sql, args, err := stat.ToSql()
-			if err != nil {
+			if err := wrapStatmentErr(err); err != nil {
 				return err
 			}
 
 			_, err = tx.Exec(ctx, sql, args...)
-			if err != nil {
+			if err := wrapSQLErr(err); err != nil {
 				return err
 			}
 		} else {
@@ -56,12 +57,12 @@ func (r *KeychainPgRepository) KeychainUpsert(ctx context.Context, kcdata *domai
 				Where(sq.Eq{"id": kcdata.ID})
 
 			sql, args, err := updateSt.ToSql()
-			if err != nil {
+			if err := wrapStatmentErr(err); err != nil {
 				return err
 			}
 
 			_, err = tx.Exec(ctx, sql, args...)
-			if err != nil {
+			if err := wrapSQLErr(err); err != nil {
 				return err
 			}
 		}
@@ -69,10 +70,7 @@ func (r *KeychainPgRepository) KeychainUpsert(ctx context.Context, kcdata *domai
 		return nil
 	})
 
-	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
-			return nil, domain.ErrConflictingData
-		}
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 
@@ -96,7 +94,6 @@ func (r *KeychainPgRepository) KeychainGet(ctx context.Context, keychainID domai
 
 func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 	item *domain.KCItemData) (*domain.KCItemData, bool, error) {
-
 	var (
 		updated bool
 		result  *domain.KCItemData
@@ -104,7 +101,8 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 
 	err := pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
 		var oldItem *domain.KCItemData
-		if items, err := r.selectKeychainItems(ctx, tx, item.KeyChainID, item.ID, time.Time{}, time.Time{}, true); err == nil {
+		if items, err := r.selectKeychainItems(ctx, tx,
+			item.KeyChainID, item.ID, time.Time{}, time.Time{}, true); err == nil {
 			if len(items) > 0 {
 				oldItem = items[0]
 			}
@@ -126,7 +124,7 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 					item.ClientTime.UTC(), item.ServerTime.UTC())
 
 			sql, args, err = insertSt.ToSql()
-			if err != nil {
+			if err := wrapStatmentErr(err); err != nil {
 				return err
 			}
 		} else {
@@ -151,13 +149,13 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 					"keychain_id": item.KeyChainID})
 
 			sql, args, err = updateSt.ToSql()
-			if err != nil {
+			if err := wrapStatmentErr(err); err != nil {
 				return err
 			}
 		}
 
 		_, err = tx.Exec(ctx, sql, args...)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return err
 		}
 
@@ -166,11 +164,11 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 			Where(sq.Eq{"keychain_item_id": item.ID,
 				"keychain_id": item.KeyChainID})
 		sql, args, err = deleteSt.ToSql()
-		if err != nil {
+		if err := wrapStatmentErr(err); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, sql, args...)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return err
 		}
 
@@ -181,11 +179,11 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 		for k, v := range item.MetaData {
 			s := insertSt.Values(item.ID, item.KeyChainID, k, v)
 			sql, args, err = s.ToSql()
-			if err != nil {
+			if err := wrapStatmentErr(err); err != nil {
 				return err
 			}
 			_, err = tx.Exec(ctx, sql, args...)
-			if err != nil {
+			if err := wrapSQLErr(err); err != nil {
 				return err
 			}
 		}
@@ -194,10 +192,7 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 		return nil
 	})
 
-	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
-			return nil, false, domain.ErrConflictingData
-		}
+	if err := wrapSQLErr(err); err != nil {
 		return nil, false, err
 	}
 
@@ -246,20 +241,17 @@ func (r *KeychainPgRepository) selectKeychainItems(ctx context.Context, tx query
 	}
 
 	sql, args, err := statement.ToSql()
-	if err != nil {
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 
 	rows, err := tx.Query(ctx, sql, args...)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrDataNotFound
-		}
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 
 	list := make([]*domain.KCItemData, 0)
-	item_ids := make([]domain.KeychainItemID, 0)
+	itemIDs := make([]domain.KeychainItemID, 0)
 	defer rows.Close()
 	for rows.Next() {
 		item := domain.KCItemData{}
@@ -273,16 +265,16 @@ func (r *KeychainPgRepository) selectKeychainItems(ctx context.Context, tx query
 			&item.ClientTime,
 			&item.ServerTime,
 		)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 		list = append(list, &item)
-		item_ids = append(item_ids, item.ID)
+		itemIDs = append(itemIDs, item.ID)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read row error: %w", err)
 	}
 
 	if len(list) == 0 {
@@ -291,14 +283,14 @@ func (r *KeychainPgRepository) selectKeychainItems(ctx context.Context, tx query
 	statement = r.db.QueryBuilder.
 		Select("keychain_item_id", "k", "v").
 		From("keychain_item_meta").
-		Where(sq.Eq{"keychain_item_id": item_ids, "keychain_id": keyChainID})
+		Where(sq.Eq{"keychain_item_id": itemIDs, "keychain_id": keyChainID})
 	sql, args, err = statement.ToSql()
-	if err != nil {
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 	rowsMeta, err := tx.Query(ctx, sql, args...)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
+		return nil, wrapSQLErr(err)
 	}
 	defer rowsMeta.Close()
 
@@ -308,7 +300,7 @@ func (r *KeychainPgRepository) selectKeychainItems(ctx context.Context, tx query
 			k, v string
 		)
 		err := rowsMeta.Scan(&i, &k, &v)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 		for _, j := range list {
@@ -322,7 +314,7 @@ func (r *KeychainPgRepository) selectKeychainItems(ctx context.Context, tx query
 		}
 	}
 	err = rowsMeta.Err()
-	if err != nil {
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 
@@ -348,15 +340,12 @@ func (r *KeychainPgRepository) selectKeychainList(ctx context.Context, tx queryA
 	}
 
 	sql, args, err := statement.ToSql()
-	if err != nil {
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 
 	rows, err := tx.Query(ctx, sql, args...)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrDataNotFound
-		}
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 	defer rows.Close()
@@ -370,15 +359,38 @@ func (r *KeychainPgRepository) selectKeychainList(ctx context.Context, tx queryA
 			&item.Name,
 		)
 		list = append(list, &item)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 	}
 
 	err = rows.Err()
-	if err != nil {
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 
 	return list, nil
+}
+
+func wrapSQLErr(err error) error {
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				return domain.ErrConflictingData
+			}
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrDataNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+func wrapStatmentErr(err error) error {
+	if err != nil {
+		return fmt.Errorf("statemt build error: %w", err)
+	}
+	return nil
 }

@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -44,29 +45,29 @@ func getSqliteDB() (*sqlite.DB, error) {
 	defer sqliteDBmutex.Unlock()
 
 	if sqliteDB == nil {
-		db, err := sqlite.NewDBStorage(context.Background(), &config.Database{DSN: cSqliteFilename, Driver: "sqlite3"})
+		database, err := sqlite.NewDBStorage(context.Background(), &config.Database{DSN: cSqliteFilename, Driver: "sqlite3"})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create database error: %w", err)
 		}
-		err = db.RunMigrations()
+		err = database.RunMigrations()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("migrate error: %w", err)
 		}
-		sqliteDB = db
+		sqliteDB = database
 	}
 
 	return sqliteDB, nil
 }
 
 func TestSqliteRepository(t *testing.T) {
-	log := logger.NewLogger(&config.App{LogLevel: "debug"})
-	db, err := getSqliteDB()
+	l := logger.NewLogger(&config.App{LogLevel: "debug"})
+	database, err := getSqliteDB()
 	assert.NoError(t, err)
 	if err != nil {
 		return
 	}
 
-	repoU, err := sqlite.NewUserRepository(db, log)
+	repoU, err := sqlite.NewUserRepository(database, l)
 	assert.NoError(t, err)
 	if err != nil {
 		return
@@ -74,7 +75,7 @@ func TestSqliteRepository(t *testing.T) {
 
 	repotest.UserRepositoryTest(t, repoU)
 
-	repoK, err := sqlite.NewKeychainSqliteRepository(db, log)
+	repoK, err := sqlite.NewKeychainSqliteRepository(database, l)
 	assert.NoError(t, err)
 	if err != nil {
 		return

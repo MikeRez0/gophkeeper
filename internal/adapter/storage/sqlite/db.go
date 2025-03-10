@@ -27,18 +27,18 @@ type DB struct {
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
-func NewDBStorage(ctx context.Context, config *config.Database) (*DB, error) {
-	if config.Driver == "sqlite3" {
-		_, err := os.Stat(config.DSN)
+func NewDBStorage(ctx context.Context, conf *config.Database) (*DB, error) {
+	if conf.Driver == "sqlite3" {
+		_, err := os.Stat(conf.DSN)
 		if os.IsNotExist(err) {
-			_, err = os.Create(config.DSN)
+			_, err = os.Create(conf.DSN)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create db file: %w", err)
 			}
 		}
 	}
 
-	db, err := sql.Open(config.Driver, config.DSN)
+	db, err := sql.Open(conf.Driver, conf.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a connection pool: %w", err)
 	}
@@ -50,14 +50,14 @@ func NewDBStorage(ctx context.Context, config *config.Database) (*DB, error) {
 
 	psql := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Question)
 
-	dsn := config.DSN
-	if config.Driver == "sqlite3" {
+	dsn := conf.DSN
+	if conf.Driver == "sqlite3" {
 		dsn = "sqlite3://" + dsn
 	}
 
 	dbs := DB{
 		DB:           db,
-		driver:       config.Driver,
+		driver:       conf.Driver,
 		dsn:          dsn,
 		QueryBuilder: &psql,
 	}

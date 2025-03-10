@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -35,7 +36,7 @@ func NewKeychainSqliteRepository(db *DB, log *zap.Logger) (*KeychainSqliteReposi
 
 func (r *KeychainSqliteRepository) KeychainUpsert(ctx context.Context, kcdata *domain.KCData) (*domain.KCData, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 	defer func() {
@@ -56,19 +57,13 @@ func (r *KeychainSqliteRepository) KeychainUpsert(ctx context.Context, kcdata *d
 			Columns("id", "owner_id", "name").
 			Values(kcdata.ID, kcdata.OwnerID, kcdata.Name)
 
-		sql, args, err := stat.ToSql()
-		if err != nil {
+		sqlStr, args, err := stat.ToSql()
+		if err := wrapStatmentErr(err); err != nil {
 			return nil, err
 		}
 
-		_, err = tx.ExecContext(ctx, sql, args...)
-		if err != nil {
-			var sqlErr sqlite3.Error
-			if errors.As(err, &sqlErr) {
-				if errors.Is(sqlErr, sqlite3.ErrConstraint) {
-					return nil, domain.ErrConflictingData
-				}
-			}
+		_, err = tx.ExecContext(ctx, sqlStr, args...)
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 	} else {
@@ -78,19 +73,19 @@ func (r *KeychainSqliteRepository) KeychainUpsert(ctx context.Context, kcdata *d
 			Set("owner_id", kcdata.OwnerID).
 			Where(sq.Eq{"id": kcdata.ID})
 
-		sql, args, err := updateSt.ToSql()
-		if err != nil {
+		sqlStr, args, err := updateSt.ToSql()
+		if err := wrapStatmentErr(err); err != nil {
 			return nil, err
 		}
 
-		_, err = tx.ExecContext(ctx, sql, args...)
-		if err != nil {
+		_, err = tx.ExecContext(ctx, sqlStr, args...)
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 	}
 
 	err = tx.Commit()
-	if err != nil {
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 
@@ -116,7 +111,7 @@ func (r *KeychainSqliteRepository) KeychainGet(ctx context.Context,
 func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 	item *domain.KCItemData) (*domain.KCItemData, bool, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
+	if err := wrapSQLErr(err); err != nil {
 		return nil, false, err
 	}
 	defer func() {
@@ -127,8 +122,8 @@ func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 	}()
 
 	var (
-		sql  string
-		args []interface{}
+		sqlStr string
+		args   []interface{}
 	)
 
 	upsertSt := r.db.QueryBuilder.
@@ -145,12 +140,12 @@ func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 				server_ts = excluded.server_ts
 			WHERE excluded.client_ts >= keychain_item.client_ts`)
 
-	sql, args, err = upsertSt.ToSql()
-	if err != nil {
+	sqlStr, args, err = upsertSt.ToSql()
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, false, err
 	}
 
-	sqlRes, err := tx.ExecContext(ctx, sql, args...)
+	sqlRes, err := tx.ExecContext(ctx, sqlStr, args...)
 	if err := wrapSQLErr(err); err != nil {
 		return nil, false, err
 	}
@@ -172,12 +167,12 @@ func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 		Delete("keychain_item_meta").
 		Where(sq.Eq{"keychain_item_id": item.ID,
 			"keychain_id": item.KeyChainID})
-	sql, args, err = deleteSt.ToSql()
-	if err != nil {
+	sqlStr, args, err = deleteSt.ToSql()
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, false, err
 	}
-	_, err = tx.ExecContext(ctx, sql, args...)
-	if err != nil {
+	_, err = tx.ExecContext(ctx, sqlStr, args...)
+	if err := wrapSQLErr(err); err != nil {
 		return nil, false, err
 	}
 
@@ -187,12 +182,12 @@ func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 
 	for k, v := range item.MetaData {
 		s := insertSt.Values(item.ID, item.KeyChainID, k, v)
-		sql, args, err = s.ToSql()
-		if err != nil {
+		sqlStr, args, err = s.ToSql()
+		if err := wrapStatmentErr(err); err != nil {
 			return nil, false, err
 		}
-		_, err = tx.ExecContext(ctx, sql, args...)
-		if err != nil {
+		_, err = tx.ExecContext(ctx, sqlStr, args...)
+		if err := wrapSQLErr(err); err != nil {
 			return nil, false, err
 		}
 	}
@@ -242,16 +237,21 @@ func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx q
 
 	statement = statement.OrderBy("client_ts desc")
 
-	sql, args, err := statement.ToSql()
-	if err != nil {
+	sqlStr, args, err := statement.ToSql()
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 
-	rows, err := tx.QueryContext(ctx, sql, args...)
+	rows, err := tx.QueryContext(ctx, sqlStr, args...)
 	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		err = rows.Close()
+		if err != nil {
+			r.log.Error("close row error", zap.Error(err))
+		}
+	}()
 
 	list := make([]*domain.KCItemData, 0)
 	itemIDs := make([]domain.KeychainItemID, 0)
@@ -267,7 +267,7 @@ func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx q
 			&item.ClientTime,
 			&item.ServerTime,
 		)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 		list = append(list, &item)
@@ -275,7 +275,7 @@ func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx q
 	}
 
 	err = rows.Err()
-	if err != nil {
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 	if len(list) == 0 {
@@ -286,15 +286,20 @@ func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx q
 		Select("keychain_item_id", "k", "v").
 		From("keychain_item_meta").
 		Where(sq.Eq{"keychain_item_id": itemIDs, "keychain_id": keyChainID})
-	sql, args, err = statement.ToSql()
-	if err != nil {
+	sqlStr, args, err = statement.ToSql()
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
-	rows, err = tx.QueryContext(ctx, sql, args...)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	rows, err = tx.QueryContext(ctx, sqlStr, args...)
+	if err := wrapSQLErr(err); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		err = rows.Close()
+		if err != nil {
+			r.log.Error("close row error", zap.Error(err))
+		}
+	}()
 
 	for rows.Next() {
 		var (
@@ -302,7 +307,7 @@ func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx q
 			k, v string
 		)
 		err := rows.Scan(&i, &k, &v)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 		for _, j := range list {
@@ -316,7 +321,7 @@ func (r *KeychainSqliteRepository) selectKeychainItems(ctx context.Context, tx q
 		}
 	}
 	err = rows.Err()
-	if err != nil {
+	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
 
@@ -337,16 +342,21 @@ func (r *KeychainSqliteRepository) selectKeychainList(ctx context.Context, tx qu
 		statement = statement.Where(sq.Eq{"owner_id": userID})
 	}
 
-	sql, args, err := statement.ToSql()
-	if err != nil {
+	sqlStr, args, err := statement.ToSql()
+	if err := wrapStatmentErr(err); err != nil {
 		return nil, err
 	}
 
-	rows, err := tx.QueryContext(ctx, sql, args...)
+	rows, err := tx.QueryContext(ctx, sqlStr, args...)
 	if err := wrapSQLErr(err); err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		err = rows.Close()
+		if err := wrapSQLErr(err); err != nil {
+			r.log.Error("close row error", zap.Error(err))
+		}
+	}()
 
 	list := make([]*domain.KCData, 0)
 	for rows.Next() {
@@ -357,7 +367,7 @@ func (r *KeychainSqliteRepository) selectKeychainList(ctx context.Context, tx qu
 			&item.Name,
 		)
 		list = append(list, &item)
-		if err != nil {
+		if err := wrapSQLErr(err); err != nil {
 			return nil, err
 		}
 	}
@@ -382,6 +392,13 @@ func wrapSQLErr(err error) error {
 			return domain.ErrDataNotFound
 		}
 		return err
+	}
+	return nil
+}
+
+func wrapStatmentErr(err error) error {
+	if err != nil {
+		return fmt.Errorf("statemt build error: %w", err)
 	}
 	return nil
 }

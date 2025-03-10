@@ -32,7 +32,7 @@ func (s *KeychainDataService) KeychainSave(ctx context.Context,
 
 	oldK, err := s.repo.KeychainGet(ctx, keychain.ID)
 	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
-		return nil, err
+		return nil, err //nolint:wrapcheck // it's ok
 	}
 
 	if oldK != nil && !s.checkAuthority(ctx, userID, oldK.ID) {
@@ -40,7 +40,7 @@ func (s *KeychainDataService) KeychainSave(ctx context.Context,
 	}
 	kc, err := s.repo.KeychainUpsert(ctx, keychain)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // it's ok
 	}
 	return kc, nil
 }
@@ -48,7 +48,7 @@ func (s *KeychainDataService) KeychainSave(ctx context.Context,
 func (s *KeychainDataService) KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error) {
 	list, err := s.repo.KeychainList(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // it's ok
 	}
 	return list, nil
 }
@@ -57,7 +57,7 @@ func (s *KeychainDataService) KeychainGet(ctx context.Context, user domain.UserI
 	keychainID domain.KeychainID) (*domain.KCData, error) {
 	list, err := s.repo.KeychainList(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // it's ok
 	}
 	for _, k := range list {
 		if k.ID == keychainID {
@@ -75,7 +75,7 @@ func (s *KeychainDataService) KeychainSaveItem(ctx context.Context, user domain.
 	item.ServerTime = time.Now().UTC()
 	item, updated, err := s.repo.KeychainItemUpsert(ctx, item)
 	if err != nil {
-		return nil, updated, err
+		return nil, updated, err //nolint:wrapcheck // it's ok
 	}
 	return item, updated, nil
 }
@@ -87,7 +87,7 @@ func (s *KeychainDataService) KeychainGetItem(ctx context.Context, user domain.U
 
 	item, err := s.repo.KeychainItemSelect(ctx, keychainID, id)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // it's ok
 	}
 	return item, nil
 }
@@ -111,7 +111,7 @@ func (s *KeychainDataService) KeychainGetItemsSince(ctx context.Context,
 
 	items, err := s.repo.KeychainGetItemsSince(ctx, keychainID, sinceClient, sinceServer)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // it's ok
 	}
 	return items, nil
 }
@@ -139,7 +139,7 @@ func (s *KeychainDataService) Sync(ctx context.Context, user domain.UserID,
 		i.ServerTime = time.Now().UTC()
 		_, _, err := s.repo.KeychainItemUpsert(ctx, i)
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:wrapcheck // it's ok
 		}
 	}
 

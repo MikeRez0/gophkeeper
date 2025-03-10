@@ -51,8 +51,3 @@ func NewRouter(
 
 	return &Router{router}, nil
 }
-
-// Serve starts the HTTP server.
-func (r *Router) Serve(listenAddr string) error {
-	return r.Run(listenAddr)
-}

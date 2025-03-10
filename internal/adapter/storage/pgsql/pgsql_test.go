@@ -2,6 +2,7 @@ package pgsql_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -47,30 +48,30 @@ func getPgDB() (*pgsql.DB, error) {
 	defer dbmutex.Unlock()
 
 	if pgDB == nil {
-		db, err := pgsql.NewDBStorage(context.Background(), &config.Database{DSN: dbtest.DSN})
+		database, err := pgsql.NewDBStorage(context.Background(), &config.Database{DSN: dbtest.DSN})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create database error: %w", err)
 		}
-		err = db.RunMigrations()
+		err = database.RunMigrations()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("migrate error: %w", err)
 		}
-		pgDB = db
+		pgDB = database
 	}
 
 	return pgDB, nil
 }
 
 func TestPgRepository_User(t *testing.T) {
-	log := logger.NewLogger(&config.App{LogLevel: "debug"})
+	l := logger.NewLogger(&config.App{LogLevel: "debug"})
 
-	db, err := getPgDB()
+	database, err := getPgDB()
 	assert.NoError(t, err)
 	if err != nil {
 		return
 	}
 
-	repoU, err := pgsql.NewUserRepository(db)
+	repoU, err := pgsql.NewUserRepository(database)
 	assert.NoError(t, err)
 	if err != nil {
 		return
@@ -78,7 +79,7 @@ func TestPgRepository_User(t *testing.T) {
 
 	repotest.UserRepositoryTest(t, repoU)
 
-	repoK, err := pgsql.NewKeychainPgRepository(db, log)
+	repoK, err := pgsql.NewKeychainPgRepository(database, l)
 	assert.NoError(t, err)
 	if err != nil {
 		return

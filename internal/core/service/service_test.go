@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -44,15 +45,15 @@ func getDB() (*pgsql.DB, error) {
 	defer dbmutex.Unlock()
 
 	if database == nil {
-		db, err := pgsql.NewDBStorage(context.Background(), &config.Database{DSN: dbtest.DSN})
+		d, err := pgsql.NewDBStorage(context.Background(), &config.Database{DSN: dbtest.DSN})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create database error: %w", err)
 		}
-		err = db.RunMigrations()
+		err = d.RunMigrations()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("migration error: %w", err)
 		}
-		database = db
+		database = d
 	}
 
 	return database, nil

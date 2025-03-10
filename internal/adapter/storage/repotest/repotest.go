@@ -3,6 +3,7 @@ package repotest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,7 +27,10 @@ func UserRepositoryTest(t *testing.T, repo port.IUserRepository) {
 			run: func() error {
 				_, err := repo.CreateUser(ctx, &domain.User{Login: "Test", Password: "Test"})
 				assert.NoError(t, err)
-				return err
+				if err != nil {
+					return fmt.Errorf("create user error: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -34,6 +38,9 @@ func UserRepositoryTest(t *testing.T, repo port.IUserRepository) {
 			run: func() error {
 				user, err := repo.GetUserByLogin(ctx, "Test")
 				assert.NoError(t, err)
+				if err != nil {
+					return fmt.Errorf("get user error: %w", err)
+				}
 				assert.Equal(t, "Test", user.Login)
 
 				return nil
@@ -77,6 +84,8 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 		Key:        []byte("test key"),
 	}
 
+	errKeychainIsNil := errors.New("keychain is nil")
+
 	assertItemEq := func(t *testing.T, exp, act *domain.KCItemData) error {
 		t.Helper()
 		if assert.Equal(t, exp.ID, act.ID) &&
@@ -100,12 +109,15 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				_, err := repo.KeychainUpsert(ctx, &domain.KCData{Name: "TestChain", OwnerID: userID, ID: keychainID})
 				assert.NoError(t, err)
 				if err != nil {
-					return err
+					return fmt.Errorf("keychain upsert error: %w", err)
 				}
 				_, err = repo.KeychainUpsert(ctx, &domain.KCData{Name: "DummyChain",
 					OwnerID: userID, ID: domain.KeychainID(uuid.New())})
 				assert.NoError(t, err)
-				return err
+				if err != nil {
+					return fmt.Errorf("keychain upsert error: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -114,7 +126,7 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				k, err := repo.KeychainGet(ctx, keychainID)
 				assert.NoError(t, err)
 				if !assert.NotNil(t, k) {
-					return errors.New("keychain is nil")
+					return errKeychainIsNil
 				}
 				assert.Equal(t, "TestChain", k.Name)
 				assert.Equal(t, keychainID, k.ID)
@@ -129,7 +141,7 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				l, err := repo.KeychainList(ctx, userID)
 				assert.NoError(t, err)
 				if !assert.NotNil(t, l) {
-					return errors.New("keychain list is nil")
+					return errKeychainIsNil
 				}
 				assert.Equal(t, 2, len(l))
 				for _, k := range l {
@@ -161,7 +173,7 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				k, updated, err := repo.KeychainItemUpsert(ctx, &ki1)
 				assert.NoError(t, err)
 				if !assert.NotNil(t, k) {
-					return errors.New("keychain item is nil")
+					return errKeychainIsNil
 				}
 				assert.True(t, updated)
 
@@ -177,7 +189,7 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				k, updated, err := repo.KeychainItemUpsert(ctx, &ki1)
 				assert.NoError(t, err)
 				if !assert.NotNil(t, k) {
-					return errors.New("keychain item is nil")
+					return errKeychainIsNil
 				}
 				assert.True(t, updated)
 
@@ -190,7 +202,7 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				k, err := repo.KeychainItemSelect(ctx, ki1.KeyChainID, ki1.ID)
 				assert.NoError(t, err)
 				if !assert.NotNil(t, k) {
-					return errors.New("keychain item is nil")
+					return errKeychainIsNil
 				}
 
 				return assertItemEq(t, &ki1, k)
@@ -208,7 +220,7 @@ func KeychainRepositoryTest(t *testing.T, repo port.IKeychainRepository) {
 				k, updated, err := repo.KeychainItemUpsert(ctx, &kiNew)
 				assert.NoError(t, err)
 				if !assert.NotNil(t, k) {
-					return errors.New("keychain item is nil")
+					return errKeychainIsNil
 				}
 				assert.False(t, updated)
 

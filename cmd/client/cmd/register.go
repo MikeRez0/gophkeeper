@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -18,7 +15,7 @@ var registerCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := client.BootstrapApp(appConfig)
 		if err != nil {
-			return err
+			return fmt.Errorf(cAppStartErrorText, err)
 		}
 
 		err = putFlagValues(client.NewCommandExecutor(app)).

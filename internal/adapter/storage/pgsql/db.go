@@ -24,8 +24,8 @@ type DB struct {
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
-func NewDBStorage(ctx context.Context, config *config.Database) (*DB, error) {
-	pool, err := pgxpool.New(context.Background(), config.DSN)
+func NewDBStorage(ctx context.Context, conf *config.Database) (*DB, error) {
+	pool, err := pgxpool.New(context.Background(), conf.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a connection pool: %w", err)
 	}
@@ -39,7 +39,7 @@ func NewDBStorage(ctx context.Context, config *config.Database) (*DB, error) {
 
 	dbs := DB{
 		Pool:         pool,
-		dsn:          config.DSN,
+		dsn:          conf.DSN,
 		QueryBuilder: &psql,
 	}
 

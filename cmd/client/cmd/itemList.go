@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -18,13 +15,13 @@ var itemListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := client.BootstrapApp(appConfig)
 		if err != nil {
-			return fmt.Errorf("start app error: %w", err)
+			return fmt.Errorf(cAppStartErrorText, err)
 		}
 
 		err = putFlagValues(client.NewCommandExecutor(app)).
 			ItemList(context.Background(), getQueryFlags(cmd))
 		if err != nil {
-			return fmt.Errorf("cmd error: %w", err)
+			return fmt.Errorf("cmd item list error: %w", err)
 		}
 		return nil
 	},
