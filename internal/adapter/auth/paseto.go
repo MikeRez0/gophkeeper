@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"aidanwoods.dev/go-paseto"
+	paseto "aidanwoods.dev/go-paseto"
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 	"github.com/MikeRez0/gophkeeper/internal/core/port"
 )
