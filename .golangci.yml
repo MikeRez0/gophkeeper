@@ -36,13 +36,11 @@ run:
 output:
   formats:
     - format: json
-      path: .golangci-lint/report-unformatted.json
+      # path: .golangci-lint/report-unformatted.json
   # Print lines of code with issue.
   print-issued-lines: true
   # Print linter name in the end of issue text.
   print-linter-name: true
-  # Make issues output unique by line.
-  uniq-by-line: true
   # Add a prefix to the output file references.
   path-prefix: ""
   # Sort results by: filepath, line and column.
@@ -565,6 +563,9 @@ issues:
   max-issues-per-linter: 0
   max-same-issues: 0
 
+
+# Make issues output unique by line.
+  uniq-by-line: true
   # Invariable parameters #
 
   # Show only new issues: if there are unstaged changes or untracked files,
