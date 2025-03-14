@@ -7,7 +7,7 @@ import (
 var keychainCmd = &cobra.Command{
 	Use:   "keychain",
 	Short: "Local keychain control",
-	Long:  `Local keychain control`,
+	Long:  `Local keychain control.`,
 }
 
 func init() {

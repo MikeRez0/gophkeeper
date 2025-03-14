@@ -1,3 +1,4 @@
+// Package keychain implements Keychain item business logic (ex.: encrypt, decrypt).
 package keychain
 
 import (
@@ -8,12 +9,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// KeychainItem stores item data and changed status.
 type KeychainItem struct {
 	data       *domain.KCItemData
 	lastChange time.Time
 	changed    bool
 }
 
+// NewKeychainItem create new keyhcain item with [itemType].
 func NewKeychainItem(kc domain.KeychainID, itemType domain.KCItemType) *KeychainItem {
 	item := KeychainItem{
 		data: newKeychainItemData(kc, itemType),
@@ -23,6 +26,8 @@ func NewKeychainItem(kc domain.KeychainID, itemType domain.KCItemType) *Keychain
 
 	return &item
 }
+
+// NewKeychainItemFromData create new keyhcain item from provided data.
 func NewKeychainItemFromData(data *domain.KCItemData) *KeychainItem {
 	item := KeychainItem{
 		data: data,
@@ -31,10 +36,12 @@ func NewKeychainItemFromData(data *domain.KCItemData) *KeychainItem {
 	return &item
 }
 
+// MetaData returns meta data values.
 func (ki *KeychainItem) MetaData() domain.KeychainItemMeta {
 	return ki.data.MetaData
 }
 
+// MetaData returns meta data value with given name.
 func (ki *KeychainItem) MetaDataItem(key string) string {
 	if v, ok := ki.data.MetaData[key]; ok {
 		return v
@@ -42,6 +49,7 @@ func (ki *KeychainItem) MetaDataItem(key string) string {
 	return ""
 }
 
+// MetaDataSetItem sets meta data value with given name.
 func (ki *KeychainItem) MetaDataSetItem(key string, value string) {
 	ki.data.MetaData[key] = value
 
@@ -54,6 +62,7 @@ func (ki *KeychainItem) touch() {
 	ki.data.ClientTime = ki.lastChange
 }
 
+// fillMetaData controls meta data with item type.
 func fillMetaData(item *domain.KCItemData) {
 	if item.MetaData == nil {
 		item.MetaData = make(domain.KeychainItemMeta, 5)
@@ -123,12 +132,14 @@ func (ki *KeychainItem) IsChanged() bool {
 	return ki.changed
 }
 
+// SetType changes type of item.
 func (ki *KeychainItem) SetType(t domain.KCItemType) {
 	ki.data.ItemType = t
 	fillMetaData(ki.data)
 	ki.touch()
 }
 
+// StoreSecret stores secret value and key.
 func (ki *KeychainItem) StoreSecret(key, value []byte) {
 	ki.data.Key = key
 	ki.data.Value = value

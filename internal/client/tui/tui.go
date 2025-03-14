@@ -24,18 +24,19 @@ const (
 	cPageLogin     = "login"
 )
 
+// UIController is main UI app object.
 type UIController struct { //nolint:govet // for comfortable work
 	log *zap.Logger
-	app *app.ClientApp
+	app *app.ClientApp // client application core
 
-	login            string
-	password         string
-	keychainPassword string
-	secretValue      []byte
+	login            string // login value entered by user
+	password         string // password value entered by user
+	keychainPassword string // keychain password value entered by user
+	secretValue      []byte // secret value entered by user
 
-	keychainID     domain.KeychainID
-	keychainItemID domain.KeychainItemID
-	keychainItem   *keychain.KeychainItem
+	keychainID     domain.KeychainID      // selected keychain ID
+	keychainItemID domain.KeychainItemID  // selected keychain item ID
+	keychainItem   *keychain.KeychainItem // current keychain item object
 
 	uiapp        *tview.Application
 	pages        *tview.Pages
@@ -50,6 +51,7 @@ type UIController struct { //nolint:govet // for comfortable work
 	jobCancel context.CancelFunc
 }
 
+// NewUIController creates new UIController.
 func NewUIController(a *app.ClientApp, log *zap.Logger) (*UIController, error) {
 	c := &UIController{
 		app: a,
@@ -501,6 +503,7 @@ func (c *UIController) writeLog(message string, err error) {
 	c.logView.ScrollToEnd()
 }
 
+// Run - start point of ui application.
 func (c *UIController) Run() error {
 	c.buildUI()
 	c.pages.SwitchToPage(cPageLogin)

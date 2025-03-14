@@ -1,3 +1,4 @@
+// Package http provides implementation of GophKeeper's HTTP API-server router.
 package http
 
 import (
@@ -8,16 +9,21 @@ import (
 	"go.uber.org/zap"
 )
 
+// Router - main object for handling API requests.
 type Router struct {
 	*gin.Engine
 }
 
+// NewRouter creates new Router with user, keychain handlers.
+//
+// Also needs token service for authenticate requests.
 func NewRouter(
-	conf *config.HTTP,
-	tokenService port.TokenService,
-	userHandler *UserHandler,
-	keychainHandler *KeychainHandler,
-	log *zap.Logger) (*Router, error) {
+	conf *config.HTTP, // HTTP-configuration
+	tokenService port.TokenService, // Service for generate, validate user-token
+	userHandler *UserHandler, // Handler for user requests
+	keychainHandler *KeychainHandler, // Handler for keychain requests
+	log *zap.Logger, // Log-object
+) (*Router, error) {
 	router := gin.New()
 
 	router.Use(logRequest(log.WithOptions(zap.WithCaller(false))))

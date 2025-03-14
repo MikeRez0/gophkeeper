@@ -11,7 +11,7 @@ import (
 var keychainListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List local keychains",
-	Long:  `List local keychains`,
+	Long:  `List local keychains with name filtered by flag --name`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := client.BootstrapApp(appConfig)
 		if err != nil {

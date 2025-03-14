@@ -17,6 +17,10 @@ import (
 	"golang.org/x/term"
 )
 
+// inputString requests string from user.
+// Shows current value in greeting.
+// Saves current value on empty input.
+// Can hide input (for secret).
 func (c *CommandExecutor) inputString(greeting, current string, hidden bool) string {
 	var v string
 	fmt.Printf("%s [%s]: ", greeting, current)
@@ -38,6 +42,11 @@ func (c *CommandExecutor) inputString(greeting, current string, hidden bool) str
 	}
 }
 
+// inputNumber requests number from user.
+// Shows current value in greeting.
+// Saves current value on empty input.
+// Before save checks that number is greater 0 and lower than maximum.
+// Can hide input (for secret).
 func (c *CommandExecutor) inputNumber(greeting string, current, maxV int) int {
 	var val *int
 	for val == nil {
@@ -84,6 +93,7 @@ func (c *CommandExecutor) requestFilename() string {
 
 const cOutputError = "output error: %w"
 
+// writeItemsList writes keychain items in friendly tabular format.
 func writeItemsList(list []*domain.KCItemData) error {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 2, ' ', 0)
 
@@ -111,6 +121,7 @@ func writeItemsList(list []*domain.KCItemData) error {
 	return nil
 }
 
+// writeKeychainList writes keychains in friendly tabular format.
 func writeKeychainList(list []*domain.KCData) error {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 2, ' ', 0)
 
@@ -142,6 +153,7 @@ type infoS struct {
 	v string
 }
 
+// writeTab writes key-value in tabular format.
 func writeTab(list []infoS) error {
 	w := tabwriter.NewWriter(os.Stdout, 1, 1, 2, ' ', 0)
 
@@ -157,6 +169,7 @@ func writeTab(list []infoS) error {
 	return nil
 }
 
+// findKeychainItem selects keychainItem, requests number from user if needed.
 func (c *CommandExecutor) findKeychainItem(ctx context.Context,
 	keychainID domain.KeychainID, flags map[string]string) (*domain.KCItemData, error) {
 	list, err := c.queryKeychainItem(ctx, keychainID, flags)
@@ -180,6 +193,8 @@ func (c *CommandExecutor) findKeychainItem(ctx context.Context,
 		return list[i-1], nil
 	}
 }
+
+// queryKeychainItem get keychainItems from local storage, filter result by [flags].
 func (c *CommandExecutor) queryKeychainItem(ctx context.Context,
 	keychainID domain.KeychainID, flags map[string]string) ([]*domain.KCItemData, error) {
 	list, err := c.app.Service.KeychainGetItemsSince(ctx,
@@ -205,6 +220,10 @@ func (c *CommandExecutor) queryKeychainItem(ctx context.Context,
 	return list, nil
 }
 
+// findKeychainID selects keychain
+// 1. Query list from local storage.
+// 2. Filter result by [flags].
+// 3. Request number from user if needed.
 func (c *CommandExecutor) findKeychainID(ctx context.Context, flags map[string]string) (domain.KeychainID, error) {
 	list, err := c.app.Service.KeychainList(ctx, c.app.UserID)
 	if err != nil {

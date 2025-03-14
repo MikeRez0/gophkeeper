@@ -10,12 +10,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// UserService - service managing users.
 type UserService struct {
 	repo         port.IUserRepository
 	tokenService port.TokenService
 	logger       *zap.Logger
 }
 
+// NewUserService - creates new UserService.
 func NewUserService(repo port.IUserRepository,
 	tokenService port.TokenService, logger *zap.Logger) (*UserService, error) {
 	return &UserService{
@@ -25,6 +27,7 @@ func NewUserService(repo port.IUserRepository,
 	}, nil
 }
 
+// RegisterUser - Register new user.
 func (s *UserService) RegisterUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	exUser, err := s.repo.GetUserByLogin(ctx, user.Login)
 	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
@@ -53,6 +56,7 @@ func (s *UserService) RegisterUser(ctx context.Context, user *domain.User) (*dom
 	return newUser, nil
 }
 
+// LoginUser - Authenticate user.
 func (s *UserService) LoginUser(ctx context.Context, login string, password string) (string, error) {
 	user, err := s.repo.GetUserByLogin(ctx, login)
 	if err != nil {

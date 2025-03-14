@@ -13,6 +13,7 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/service"
 )
 
+// BootstrapApp - create client application and warp up it with configuration.
 func BootstrapApp(conf *config.ConfigClient) (*app.ClientApp, error) {
 	err := conf.Parse()
 	if err != nil {
@@ -54,6 +55,7 @@ func BootstrapApp(conf *config.ConfigClient) (*app.ClientApp, error) {
 	return a, nil
 }
 
+// RunTUI - bootstrap application and run TUI.
 func RunTUI(conf *config.ConfigClient) error {
 	a, err := BootstrapApp(conf)
 	if err != nil {

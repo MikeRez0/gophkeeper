@@ -15,23 +15,25 @@ import (
 	"go.uber.org/zap"
 )
 
+// CommandExecutor core object for executing commands.
 type CommandExecutor struct {
-	app *app.ClientApp
+	app *app.ClientApp // client app core
 
-	Login        string
-	Password     string
-	Token        string
-	KeychainPass string
-	Filename     string
-
-	keychainID  domain.KeychainID
-	OfflineMode bool
+	Login        string            // login from command flags
+	Password     string            // password from command flags
+	Token        string            // token value from command flags
+	KeychainPass string            // keychain password from command flags
+	Filename     string            // file name for binary secrets from command flags
+	keychainID   domain.KeychainID // current keychain ID
+	OfflineMode  bool              // is offline mode from command flags
 }
 
+// NewCommandExecutor creates new CommandExecutor.
 func NewCommandExecutor(a *app.ClientApp) *CommandExecutor {
 	return &CommandExecutor{app: a, OfflineMode: false}
 }
 
+// preCommand runs sync job if needed.
 func (c *CommandExecutor) preCommand(ctx context.Context) error {
 	if !c.OfflineMode {
 		_ = c.sync(ctx)
@@ -67,6 +69,8 @@ func (c *CommandExecutor) sync(ctx context.Context) error {
 	return nil
 }
 
+// Register runs registration new user on server.
+// Creates new local keychain if it's not exist.
 func (c *CommandExecutor) Register(ctx context.Context) error {
 	list, err := c.app.Service.KeychainList(ctx, c.app.UserID)
 	if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
@@ -93,6 +97,7 @@ func (c *CommandExecutor) Register(ctx context.Context) error {
 	return c.sync(ctx)
 }
 
+// KeychainAdd creates new local keychain with given name.
 func (c *CommandExecutor) KeychainAdd(ctx context.Context, name string) error {
 	err := c.preCommand(ctx)
 	if err != nil {
@@ -113,6 +118,7 @@ func (c *CommandExecutor) KeychainAdd(ctx context.Context, name string) error {
 	return nil
 }
 
+// KeychainList writes keychain list.
 func (c *CommandExecutor) KeychainList(ctx context.Context) error {
 	err := c.preCommand(ctx)
 	if err != nil {
@@ -132,6 +138,8 @@ func (c *CommandExecutor) KeychainList(ctx context.Context) error {
 	return nil
 }
 
+// ItemList writes keychain items list.
+// It uses map [flags] for filtering items by label and metadata values.
 func (c *CommandExecutor) ItemList(ctx context.Context, flags map[string]string) error {
 	err := c.preCommand(ctx)
 	if err != nil {
@@ -157,6 +165,20 @@ func (c *CommandExecutor) ItemList(ctx context.Context, flags map[string]string)
 	return nil
 }
 
+// ItemStore saves keychain item.
+// It uses map [flags] to find item to update by label and metadata values .
+// If item not found it creates new one.
+// Algorithm:
+// 1. Determine keychain
+// 2. Request keychain password if needed
+// 3. Query items from local storage (select by user if found more than one)
+// 4. Create items if not found
+// 5. Read secret (check that password is correct)
+// 6. Input params of item (type, label, metadata)
+// 7. Input secret value
+// 8. Save item
+//
+// For binary type read secret value from file.
 func (c *CommandExecutor) ItemStore(ctx context.Context, flags map[string]string) error {
 	err := c.preCommand(ctx)
 	if err != nil {
@@ -239,6 +261,15 @@ func (c *CommandExecutor) ItemStore(ctx context.Context, flags map[string]string
 	return c.preCommand(ctx)
 }
 
+// ItemShow write to stdout keychain item.
+// It uses map [flags] to find item by label and metadata values .
+// Algorithm:
+// 1. Determine keychain
+// 2. Request keychain password if needed
+// 3. Query items from local storage (select by user if found more than one)
+// 4. Print item
+//
+// For binary type write secret value to file.
 func (c *CommandExecutor) ItemShow(ctx context.Context, flags map[string]string, onlySecret bool) error {
 	if err := c.preCommand(ctx); err != nil {
 		return err

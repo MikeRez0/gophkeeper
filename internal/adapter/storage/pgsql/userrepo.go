@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// UserRepository sqlite implementation of user store.
 type UserRepository struct {
 	db *DB
 }
@@ -27,6 +28,7 @@ func NewUserRepository(db *DB) (*UserRepository, error) {
 	return &UserRepository{db: db}, nil
 }
 
+// CreateUser creates new user.
 func (r *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	err := pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
 		userSt := r.db.QueryBuilder.
@@ -85,6 +87,7 @@ func (r *UserRepository) selectUser(ctx context.Context, tx queryAble,
 	return &user, nil
 }
 
+// GetUserByLogin finds user.
 func (r *UserRepository) GetUserByLogin(ctx context.Context, login string) (*domain.User, error) {
 	return r.selectUser(ctx, r.db.Pool, login, false)
 }

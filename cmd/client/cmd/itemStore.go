@@ -11,7 +11,15 @@ import (
 var itemStoreCmd = &cobra.Command{
 	Use:   "store",
 	Short: "Store item to local keychain",
-	Long:  `Store item to local keychain`,
+	Long: `Store item to keychain. 
+First of all runs query  with params of item:
+ - label 
+ - comment.
+ If quered items is more than one, you should select one from list.
+ If items not found, new item will be stored.
+ 
+ To store item you should sequently enter all params (ex. type, label, site, etc.) and secret.
+ For item with binary type data will uploaded from file with name in flag --filename`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := client.BootstrapApp(appConfig)
 		if err != nil {

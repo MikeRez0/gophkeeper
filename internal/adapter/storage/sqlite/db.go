@@ -1,3 +1,4 @@
+// Package sqlite contains repository implementation for sqlite3 database.
 package sqlite
 
 import (
@@ -17,6 +18,7 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
 )
 
+// DB is database object with SQL engine.
 type DB struct {
 	*sql.DB
 	QueryBuilder *squirrel.StatementBuilderType
@@ -27,6 +29,7 @@ type DB struct {
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
+// NewDBStorage creates new DB object.
 func NewDBStorage(ctx context.Context, conf *config.Database) (*DB, error) {
 	if conf.Driver == "sqlite3" {
 		_, err := os.Stat(conf.DSN)
@@ -65,6 +68,7 @@ func NewDBStorage(ctx context.Context, conf *config.Database) (*DB, error) {
 	return &dbs, nil
 }
 
+// RunMigrations runs migrations on database.
 func (db *DB) RunMigrations() error {
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {

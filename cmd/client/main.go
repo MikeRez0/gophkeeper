@@ -1,3 +1,5 @@
+// Client application for GophKeeper.
+// Stores secret items locally and syncing items with server.
 package main
 
 import (

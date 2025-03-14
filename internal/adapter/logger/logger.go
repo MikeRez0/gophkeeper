@@ -1,3 +1,4 @@
+// Package logger contains logger for project
 package logger
 
 import (
@@ -6,6 +7,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// NewLogger creates new logger according to config params.
 func NewLogger(conf *config.App) *zap.Logger {
 	lvl, err := zap.ParseAtomicLevel(conf.LogLevel)
 	if err != nil {

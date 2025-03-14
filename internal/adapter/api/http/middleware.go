@@ -14,6 +14,7 @@ const authHeaderKey = "Authorization"
 const authType = "Bearer"
 const userPayloadKey = "user_payload"
 
+// authCheck - checks and validates authorization header.
 func authCheck(tokenService port.TokenService, logger *zap.Logger) gin.HandlerFunc {
 	authHandler := &Handler{logger: logger}
 	return func(ctx *gin.Context) {
@@ -45,6 +46,7 @@ func authCheck(tokenService port.TokenService, logger *zap.Logger) gin.HandlerFu
 	}
 }
 
+// getAuthPayload - reads payload of auth token.
 func getAuthPayload(ctx *gin.Context) *port.TokenPayload {
 	if t, ok := ctx.MustGet(userPayloadKey).(*port.TokenPayload); ok {
 		return t
@@ -53,6 +55,7 @@ func getAuthPayload(ctx *gin.Context) *port.TokenPayload {
 	}
 }
 
+// logRequest - write request to log.
 func logRequest(log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		t := time.Now()

@@ -1,3 +1,4 @@
+// Package repotest contains test-cases for repository objects.
 package repotest
 
 import (

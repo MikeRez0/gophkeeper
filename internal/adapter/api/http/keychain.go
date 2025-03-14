@@ -18,17 +18,20 @@ const (
 	cKeychainItemParamName = "item_id"
 )
 
+// KeychainHandler - handler for keychain requests.
 type KeychainHandler struct {
 	Handler
 	service port.IKeychainDataService
 }
 
+// NewKeychainHandler - creates new keychain handler.
 func NewKeychainHandler(service port.IKeychainDataService, logger *zap.Logger) (*KeychainHandler, error) {
 	return &KeychainHandler{
 		Handler: Handler{logger: logger},
 		service: service}, nil
 }
 
+// GetKeychainList - get keychain list for authenticated user.
 func (h *KeychainHandler) GetKeychainList(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
@@ -45,6 +48,7 @@ type keychainStruct struct {
 	Name string `json:"name"`
 }
 
+// SaveKeychain - save keychain for authenticated user (updates if keychainID is provided).
 func (h *KeychainHandler) SaveKeychain(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
@@ -78,6 +82,7 @@ func (h *KeychainHandler) SaveKeychain(ctx *gin.Context) {
 	h.handleSuccess(ctx, k)
 }
 
+// GetKeychain - read keychain for authenticated user.
 func (h *KeychainHandler) GetKeychain(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
@@ -101,6 +106,7 @@ func (h *KeychainHandler) GetKeychain(ctx *gin.Context) {
 	h.handleSuccess(ctx, k)
 }
 
+// ListKeychainItems - list all keychain items for authenticated user.
 func (h *KeychainHandler) ListKeychainItems(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
@@ -124,6 +130,7 @@ func (h *KeychainHandler) ListKeychainItems(ctx *gin.Context) {
 	h.handleSuccess(ctx, items)
 }
 
+// keychainItemStruct structure for json-requested item.
 type keychainItemStruct struct {
 	Label      *string                  `json:"label"`
 	MetaData   *domain.KeychainItemMeta `json:"meta"`
@@ -134,6 +141,7 @@ type keychainItemStruct struct {
 	ClientTime *time.Time               `json:"client_time"`
 }
 
+// SaveKeychainItem - save (create/update) keychain item for authenticated user.
 func (h *KeychainHandler) SaveKeychainItem(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
@@ -212,6 +220,7 @@ func parseItemData(reqItem *keychainItemStruct, item *domain.KCItemData) {
 	}
 }
 
+// Sync - runs synchronisation process of keychain for authenticated user.
 func (h *KeychainHandler) Sync(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 
@@ -265,6 +274,7 @@ func (h *KeychainHandler) Sync(ctx *gin.Context) {
 	h.handleSuccess(ctx, result)
 }
 
+// GetKeychainItem - reads keychain item for authenticated user.
 func (h *KeychainHandler) GetKeychainItem(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
 

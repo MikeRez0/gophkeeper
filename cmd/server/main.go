@@ -1,3 +1,4 @@
+// Server application for GophKeeper.
 package main
 
 import (

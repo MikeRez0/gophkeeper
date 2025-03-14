@@ -1,3 +1,4 @@
+// Generates Private Key-Certificate pair for client-server TLS-connection.
 package main
 
 import (

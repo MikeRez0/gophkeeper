@@ -24,18 +24,14 @@ var errorStatusMap = map[error]int{
 
 	domain.ErrNoUpdatedData: http.StatusBadRequest,
 	domain.ErrBadRequest:    http.StatusBadRequest,
-
-	domain.ErrOrderAlreadyAcceptedBAnotherUser: http.StatusConflict,
-	domain.ErrOrderAlreadyAcceptedByUser:       http.StatusOK,
-	domain.ErrOrderBadNumber:                   http.StatusUnprocessableEntity,
-	domain.ErrOrderDoubleWithdraw:              http.StatusUnprocessableEntity,
-	domain.ErrInsufficientBalance:              http.StatusPaymentRequired,
 }
 
+// Handler - common logic for processing request.
 type Handler struct {
 	logger *zap.Logger
 }
 
+// NewHandler - creates new Handler object.
 func NewHandler(logger *zap.Logger) *Handler {
 	return &Handler{logger: logger}
 }
@@ -73,6 +69,7 @@ func (h *Handler) handleSuccessWithStatus(ctx *gin.Context, data any, status int
 	}
 }
 
+// handleSuccess sends a success response with 200 status code and optional data.
 func (h *Handler) handleSuccess(ctx *gin.Context, data any) {
 	h.handleSuccessWithStatus(ctx, data, http.StatusOK)
 }

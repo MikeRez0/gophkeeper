@@ -12,6 +12,7 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 )
 
+// FetchKeychainList trying to fetch keychain headers from server.
 func (a *ClientApp) FetchKeychainList(ctx context.Context) ([]*domain.KCData, error) {
 	data, err := a.doRequest(ctx, "/api/keychain", http.MethodGet, nil)
 	if err != nil {
@@ -27,6 +28,16 @@ func (a *ClientApp) FetchKeychainList(ctx context.Context) ([]*domain.KCData, er
 	return keychainList, nil
 }
 
+// SyncKeychains trying to sync keychain items with server.
+//  1. Read local keychain list
+//  2. Merge keychain list from server
+//
+// For every keychain:
+//  1. read local storage, fetch all items updated since last synchronization time [client_ts >= syncDate]
+//  2. push items to server
+//  3. save  items returned from server (items that created or changed on server since last synchronization time ).
+//
+// Returns syncTaskResult with information about pulled, pushed items.
 func (a *ClientApp) SyncKeychains(ctx context.Context) (*syncTaskResult, error) {
 	keychainList, err := a.Service.KeychainList(ctx, a.UserID)
 	if err != nil {
@@ -62,12 +73,13 @@ func (a *ClientApp) SyncKeychains(ctx context.Context) (*syncTaskResult, error) 
 			return nil, fmt.Errorf("error on keychain data sync: %w", err)
 		}
 
-		// Keychain localItems sync
+		// 1. read local storage, fetch all items updated since last synchronization time [client_ts >= syncDate]
 		localItems, err := a.Service.KeychainGetItemsSince(ctx, a.UserID, keychain.ID, a.syncTime)
 		if err != nil && !errors.Is(err, domain.ErrDataNotFound) {
 			return nil, fmt.Errorf("get items error: %w", err)
 		}
 
+		// 2. push items to server
 		query := ""
 		if !a.syncTime.IsZero() {
 			query = "?from_time=" + a.syncTime.Format(time.RFC3339)
@@ -84,6 +96,7 @@ func (a *ClientApp) SyncKeychains(ctx context.Context) (*syncTaskResult, error) 
 			return nil, fmt.Errorf("error on keychain items sync: %w", err)
 		}
 
+		// 3. save  items returned from server (items that created or changed on server since last synchronization time ).
 		serverItems := make([]*domain.KCItemData, 0)
 
 		err = json.Unmarshal(data, &serverItems)
@@ -126,6 +139,8 @@ var (
 	ErrSyncActive = errors.New("can't start new sync proccess, it's already active")
 )
 
+// RunSync starts sync job.
+// Returns new chanel, which will be informed about job status.
 func (a *ClientApp) RunSync(ctx context.Context) (chan syncTaskStatus, error) {
 	if a.syncActive.Load() {
 		return nil, ErrSyncActive

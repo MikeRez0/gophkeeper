@@ -7,6 +7,7 @@ const (
 	asciiTen  = 57
 )
 
+// ValidateLuhn validates string by Luhn-algorithm.
 func ValidateLuhn(number string) error {
 	p := len(number) % 2
 	sum, err := calculateLuhnSum(number, p)

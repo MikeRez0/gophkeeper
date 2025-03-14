@@ -10,8 +10,8 @@ import (
 
 var keychainAddCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add new keychain",
-	Long:  `Add new keychain`,
+	Short: "Adds new keychain",
+	Long:  `Adds new local keychain with name from flag --name`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := client.BootstrapApp(appConfig)
 		if err != nil {

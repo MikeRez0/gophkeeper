@@ -4,6 +4,7 @@ import (
 	"errors"
 )
 
+// Domain errors for solution.
 var (
 	ErrInternal = errors.New("internal error")
 
@@ -26,11 +27,4 @@ var (
 	ErrInvalidAuthorizationType   = errors.New("authorization type is not supported")
 	ErrUnauthorized               = errors.New("user is unauthorized to access the resource")
 	ErrForbidden                  = errors.New("user is forbidden to access the resource")
-
-	// * Business errors.
-	ErrInsufficientBalance              = errors.New("balance is not enough")
-	ErrOrderAlreadyAcceptedByUser       = errors.New("order already accepted by user")
-	ErrOrderAlreadyAcceptedBAnotherUser = errors.New("order already accepted by another user")
-	ErrOrderBadNumber                   = errors.New("order number is not valid")
-	ErrOrderDoubleWithdraw              = errors.New("order already withdrawn")
 )

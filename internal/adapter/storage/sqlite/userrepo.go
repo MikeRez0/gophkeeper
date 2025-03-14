@@ -10,11 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// UserRepository pgsql implementation of user store.
 type UserRepository struct {
 	db  *DB
 	log *zap.Logger
 }
 
+// NewUserRepository creates new user sqlite-repositiry
 func NewUserRepository(db *DB, log *zap.Logger) (*UserRepository, error) {
 	if db == nil {
 		return nil, errors.New("nil not allowed as database")
@@ -28,6 +30,7 @@ func NewUserRepository(db *DB, log *zap.Logger) (*UserRepository, error) {
 	}, nil
 }
 
+// CreateUser creates new user.
 func (r *UserRepository) CreateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	tx, err := r.db.DB.BeginTx(ctx, nil)
 	if err := wrapSQLErr(err); err != nil {
@@ -93,6 +96,7 @@ func (r *UserRepository) selectUser(ctx context.Context, tx queryAble, login str
 	return &user, nil
 }
 
+// GetUserByLogin finds user.
 func (r *UserRepository) GetUserByLogin(ctx context.Context, login string) (*domain.User, error) {
 	return r.selectUser(ctx, r.db, login)
 }

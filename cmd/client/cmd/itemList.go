@@ -11,7 +11,9 @@ import (
 var itemListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List keychain items",
-	Long:  `List keychain items`,
+	Long: `List keychain items with query params of item:
+ - label 
+ - comment`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := client.BootstrapApp(appConfig)
 		if err != nil {

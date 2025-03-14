@@ -10,6 +10,7 @@ import (
 
 const cConfigFilenameUsage = "config filename"
 
+// loadConfigFile reads and parse config from file for client or server.
 func loadConfigFile[T ConfigClient | ConfigServer](config *T) error {
 	configFile, err := getFileConfig()
 	if err != nil {

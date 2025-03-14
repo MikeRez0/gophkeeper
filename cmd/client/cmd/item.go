@@ -8,7 +8,11 @@ import (
 var itemCmd = &cobra.Command{
 	Use:   "item",
 	Short: "Work with keychain items",
-	Long:  `Work with keychain items`,
+	Long: `List, show, store itmes in keychain store.
+The keychain  is selecting by name in flag [--keychain].
+If there are more than one of keychains with name you should select one manualy.
+
+Put search values to flags as query params for search item(-s) in store `,
 }
 
 var (

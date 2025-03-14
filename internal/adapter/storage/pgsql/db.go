@@ -1,3 +1,4 @@
+// Package pgsql contains repository implementation for PostgreSQL database.
 package pgsql
 
 import (
@@ -15,6 +16,7 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/adapter/config"
 )
 
+// DB is database object with PgSQL engine.
 type DB struct {
 	*pgxpool.Pool
 	QueryBuilder *squirrel.StatementBuilderType
@@ -24,6 +26,7 @@ type DB struct {
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
+// NewDBStorage creates new DB object.
 func NewDBStorage(ctx context.Context, conf *config.Database) (*DB, error) {
 	pool, err := pgxpool.New(context.Background(), conf.DSN)
 	if err != nil {
@@ -46,6 +49,7 @@ func NewDBStorage(ctx context.Context, conf *config.Database) (*DB, error) {
 	return &dbs, nil
 }
 
+// RunMigrations runs migrations on database.
 func (db *DB) RunMigrations() error {
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {

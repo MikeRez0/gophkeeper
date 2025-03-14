@@ -32,9 +32,7 @@ func TestMain(m *testing.M) {
 func TestEncrypt(t *testing.T) {
 	l := logger.NewLogger(&config.App{LogLevel: "debug"})
 
-	enc, err := encrypter.NewEncrypter(l.Named("encrypter"), 32)
-	assert.NoError(t, err)
-	dec, err := encrypter.NewDecrypter(l.Named("decrypter"), 32)
+	enc, err := encrypter.NewCrypter(l.Named("crypter"), 32)
 	assert.NoError(t, err)
 
 	testPass := "mypassword"
@@ -45,7 +43,7 @@ func TestEncrypt(t *testing.T) {
 		env, err := enc.Encrypt(testData, []byte(testPass))
 		assert.NoError(t, err)
 
-		data, err := dec.Decrypt(env, []byte(testPass))
+		data, err := enc.Decrypt(env, []byte(testPass))
 		assert.NoError(t, err)
 		assert.NotEqual(t, testData, env.Data)
 
@@ -60,7 +58,7 @@ func TestEncrypt(t *testing.T) {
 
 		env.Key = []byte("BADKEY")
 
-		_, err = dec.Decrypt(env, []byte(testPass))
+		_, err = enc.Decrypt(env, []byte(testPass))
 		assert.Error(t, err)
 	})
 
@@ -75,7 +73,7 @@ func TestEncrypt(t *testing.T) {
 		env, err := enc.Encrypt(testData, bigPass)
 		assert.NoError(t, err)
 
-		data, err := dec.Decrypt(env, bigPass)
+		data, err := enc.Decrypt(env, bigPass)
 		assert.NoError(t, err)
 		assert.NotEqual(t, testData, env.Data)
 

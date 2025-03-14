@@ -1,3 +1,4 @@
+// Package auth contains authenticate by token service.
 package auth
 
 import (
@@ -8,12 +9,14 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/port"
 )
 
+// PasetoToken - implementation of token service based on Paseto token.
 type PasetoToken struct {
 	parser *paseto.Parser
 	key    *paseto.V4SymmetricKey
 	token  *paseto.Token
 }
 
+// New - creates new PasetoToken.
 func New() (port.TokenService, error) {
 	parser := paseto.NewParser()
 	key := paseto.NewV4SymmetricKey()
@@ -28,6 +31,7 @@ func New() (port.TokenService, error) {
 	return &s, nil
 }
 
+// CreateToken - creates new token for user.
 func (p *PasetoToken) CreateToken(user *domain.User) (string, error) {
 	p.token.SetExpiration(time.Now().Add(1000 * time.Hour))
 
@@ -39,6 +43,8 @@ func (p *PasetoToken) CreateToken(user *domain.User) (string, error) {
 
 	return p.token.V4Encrypt(*p.key, nil), nil
 }
+
+// VerifyToken - verifyes token for user.
 func (p *PasetoToken) VerifyToken(token string) (*port.TokenPayload, error) {
 	parsedToken, err := p.parser.ParseV4Local(*p.key, token, nil)
 	if err != nil {

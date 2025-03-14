@@ -16,6 +16,7 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 )
 
+// KeychainSqliteRepository stores data in sqlite3 database
 type KeychainSqliteRepository struct {
 	db  *DB
 	log *zap.Logger
@@ -27,6 +28,7 @@ type queryAble interface {
 	ExecContext(ctx context.Context, sql string, arguments ...any) (sql.Result, error)
 }
 
+// NewKeychainSqliteRepository creates new KeychainSqliteRepository.
 func NewKeychainSqliteRepository(db *DB, log *zap.Logger) (*KeychainSqliteRepository, error) {
 	if db == nil || log == nil {
 		return nil, errors.New("nil not allowed as argument")
@@ -34,6 +36,7 @@ func NewKeychainSqliteRepository(db *DB, log *zap.Logger) (*KeychainSqliteReposi
 	return &KeychainSqliteRepository{db: db, log: log}, nil
 }
 
+// KeychainUpsert creates or updates keychain header.
 func (r *KeychainSqliteRepository) KeychainUpsert(ctx context.Context, kcdata *domain.KCData) (*domain.KCData, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err := wrapSQLErr(err); err != nil {
@@ -92,10 +95,12 @@ func (r *KeychainSqliteRepository) KeychainUpsert(ctx context.Context, kcdata *d
 	return kcdata, nil
 }
 
+// KeychainList returns list of keychain header.
 func (r *KeychainSqliteRepository) KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error) {
 	return r.selectKeychainList(ctx, r.db, domain.KeychainID(uuid.Nil), user)
 }
 
+// KeychainGet returns keychain header.
 func (r *KeychainSqliteRepository) KeychainGet(ctx context.Context,
 	keychainID domain.KeychainID) (*domain.KCData, error) {
 	list, err := r.selectKeychainList(ctx, r.db, keychainID, 0)
@@ -108,6 +113,8 @@ func (r *KeychainSqliteRepository) KeychainGet(ctx context.Context,
 	return list[0], nil
 }
 
+// KeychainItemUpsert creates or updates keychain item.
+// Before upaded controls that item is newer than saved (by client datetime).
 func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 	item *domain.KCItemData) (*domain.KCItemData, bool, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -200,6 +207,7 @@ func (r *KeychainSqliteRepository) KeychainItemUpsert(ctx context.Context,
 	return item, true, nil
 }
 
+// KeychainItemSelect returns keychain item.
 func (r *KeychainSqliteRepository) KeychainItemSelect(ctx context.Context, keyChainID domain.KeychainID,
 	itemID domain.KeychainItemID) (*domain.KCItemData, error) {
 	items, err := r.selectKeychainItems(ctx, r.db, keyChainID, itemID, time.Time{}, time.Time{})
@@ -209,6 +217,7 @@ func (r *KeychainSqliteRepository) KeychainItemSelect(ctx context.Context, keyCh
 	return items[0], nil
 }
 
+// KeychainGetItemsSince returns keychain items updated after client and/or server datetime.
 func (r *KeychainSqliteRepository) KeychainGetItemsSince(ctx context.Context, keyChainID domain.KeychainID,
 	sinceClient time.Time, sinceServer time.Time) ([]*domain.KCItemData, error) {
 	return r.selectKeychainItems(ctx, r.db, keyChainID, domain.KeychainItemID(uuid.Nil), sinceClient, sinceServer)

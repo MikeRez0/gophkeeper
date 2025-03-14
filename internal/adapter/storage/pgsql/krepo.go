@@ -16,11 +16,13 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 )
 
+// KeychainPgRepository stores data in PostgreSQL database
 type KeychainPgRepository struct {
 	db  *DB
 	log *zap.Logger
 }
 
+// NewKeychainPgRepository creates new KeychainPgRepository
 func NewKeychainPgRepository(db *DB, log *zap.Logger) (*KeychainPgRepository, error) {
 	if db == nil || log == nil {
 		return nil, errors.New("nil not allowed as argument")
@@ -28,6 +30,7 @@ func NewKeychainPgRepository(db *DB, log *zap.Logger) (*KeychainPgRepository, er
 	return &KeychainPgRepository{db: db, log: log}, nil
 }
 
+// KeychainUpsert creates or updates keychain header.
 func (r *KeychainPgRepository) KeychainUpsert(ctx context.Context, kcdata *domain.KCData) (*domain.KCData, error) {
 	err := pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
 		klist, err := r.selectKeychainList(ctx, tx, kcdata.ID, domain.UserID(0), true)
@@ -77,10 +80,12 @@ func (r *KeychainPgRepository) KeychainUpsert(ctx context.Context, kcdata *domai
 	return kcdata, nil
 }
 
+// KeychainList returns list of keychain header.
 func (r *KeychainPgRepository) KeychainList(ctx context.Context, user domain.UserID) ([]*domain.KCData, error) {
 	return r.selectKeychainList(ctx, r.db.Pool, domain.KeychainID(uuid.Nil), user, false)
 }
 
+// KeychainGet returns keychain header.
 func (r *KeychainPgRepository) KeychainGet(ctx context.Context, keychainID domain.KeychainID) (*domain.KCData, error) {
 	list, err := r.selectKeychainList(ctx, r.db.Pool, keychainID, 0, false)
 	if err != nil {
@@ -92,6 +97,8 @@ func (r *KeychainPgRepository) KeychainGet(ctx context.Context, keychainID domai
 	return list[0], nil
 }
 
+// KeychainItemUpsert creates or updates keychain item.
+// Before upaded controls that item is newer than saved (by client datetime).
 func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 	item *domain.KCItemData) (*domain.KCItemData, bool, error) {
 	var (
@@ -199,6 +206,7 @@ func (r *KeychainPgRepository) KeychainItemUpsert(ctx context.Context,
 	return result, updated, nil
 }
 
+// KeychainItemSelect returns keychain item.
 func (r *KeychainPgRepository) KeychainItemSelect(ctx context.Context, keyChainID domain.KeychainID,
 	itemID domain.KeychainItemID) (*domain.KCItemData, error) {
 	items, err := r.selectKeychainItems(ctx, r.db.Pool, keyChainID, itemID, time.Time{}, time.Time{}, false)
@@ -208,6 +216,7 @@ func (r *KeychainPgRepository) KeychainItemSelect(ctx context.Context, keyChainI
 	return items[0], nil
 }
 
+// KeychainGetItemsSince returns keychain items updated after client and/or server datetime.
 func (r *KeychainPgRepository) KeychainGetItemsSince(ctx context.Context, keyChainID domain.KeychainID,
 	sinceClient time.Time, sinceServer time.Time) ([]*domain.KCItemData, error) {
 	return r.selectKeychainItems(ctx, r.db, keyChainID, domain.KeychainItemID(uuid.Nil), sinceClient, sinceServer, false)

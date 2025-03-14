@@ -1,3 +1,17 @@
+// Package domain contaions model data types.
+// # Base objects:
+//   - Keychain - storage for secret items, owned by user.
+//   - Keychain Item - object in keychain that contains label, meta data and secret.
+//
+// Item consists of:
+//   - Label
+//   - Secret value
+//   - Additional (meta) data for item: comment, etc. All items have at least comment.
+//
+// Encrypting method:
+// Secret value stored in encrypted format (with user password).
+//  1. Secret value encrypted by random 64-bit key.
+//  2. Random 64-bit key encrypted with user's keychain password.
 package domain
 
 import (
@@ -10,24 +24,25 @@ import (
 	"github.com/google/uuid"
 )
 
-type KeychainID uuid.UUID
+type KeychainID uuid.UUID // Keychain header ID
 
+// KCData stores information about keychain header.
 type KCData struct {
 	Name    string     `json:"name"`
 	ID      KeychainID `json:"id"`
 	OwnerID UserID     `json:"-"`
 }
 
-type KCItemType byte
+type KCItemType byte // Keychain item type controls meta data for item.
 
 const (
-	KCItemTypePassword   KCItemType = iota + 1
-	KCItemTypeString     KCItemType = iota + 1
-	KCItemTypeBinary     KCItemType = iota + 1
-	KCItemTypeCardNumber KCItemType = iota + 1
+	KCItemTypePassword   KCItemType = iota + 1 // password for site. Meta data: login, site
+	KCItemTypeString     KCItemType = iota + 1 // just secret string
+	KCItemTypeBinary     KCItemType = iota + 1 // binary secret data (file). Meta data: filename
+	KCItemTypeCardNumber KCItemType = iota + 1 // credit card data. Meta data: owner, issuer, validTo
 )
 
-type KeychainItemID uuid.UUID
+type KeychainItemID uuid.UUID // Keychain item ID
 
 const (
 	KCMetaKeyComment  = "Comment"
@@ -39,18 +54,19 @@ const (
 	KCMetaKeyFilename = "Filename"
 )
 
-type KeychainItemMeta map[string]string
+type KeychainItemMeta map[string]string // map to store item's meta data.
 
+// KCItemData stores information about item.
 type KCItemData struct {
-	Label      string           `json:"label"`
-	ClientTime time.Time        `json:"client_time"`
-	ServerTime time.Time        `json:"server_time"`
-	MetaData   KeychainItemMeta `json:"meta"`
-	Value      []byte           `json:"value"`
-	Key        []byte           `json:"key"`
-	KeyChainID KeychainID       `json:"keychain_id"`
-	ID         KeychainItemID   `json:"id"`
-	ItemType   KCItemType       `json:"type"`
+	Label      string           `json:"label"`       // Label
+	ClientTime time.Time        `json:"client_time"` // Client update time (key field for synchronisation)
+	ServerTime time.Time        `json:"server_time"` // Server update time
+	MetaData   KeychainItemMeta `json:"meta"`        // Meta data for item
+	Value      []byte           `json:"value"`       // Encrypted secret value
+	Key        []byte           `json:"key"`         // Encrypted key for secret value
+	KeyChainID KeychainID       `json:"keychain_id"` // Keychain ID
+	ID         KeychainItemID   `json:"id"`          // Item ID
+	ItemType   KCItemType       `json:"type"`        // Item type
 }
 
 func (md KeychainItemMeta) String() string {
@@ -138,6 +154,7 @@ func (k KCItemType) String() string {
 	}
 }
 
+// KeyChainTypes - string list of types of keychain items.
 func KeyChainTypes() []string {
 	result := make([]string, 0, 5)
 	for i := 1; i < 5; i++ {

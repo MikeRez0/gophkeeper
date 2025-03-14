@@ -7,24 +7,27 @@ import (
 	"go.uber.org/zap"
 )
 
+// UserHandler - handler for user requests.
 type UserHandler struct {
 	Handler
 	service port.IUserService
 }
 
-type UserRequest struct {
+type userRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
+// NewUserHandler - creates new user handler.
 func NewUserHandler(service port.IUserService, logger *zap.Logger) (*UserHandler, error) {
 	return &UserHandler{
 		Handler: Handler{logger: logger},
 		service: service}, nil
 }
 
+// RegisterUser - create new user, authenticate and return token.
 func (uh *UserHandler) RegisterUser(ctx *gin.Context) {
-	userReq := UserRequest{}
+	userReq := userRequest{}
 	err := ctx.ShouldBindBodyWithJSON(&userReq)
 	if err != nil {
 		uh.handleValidationError(ctx, err)
@@ -46,8 +49,9 @@ func (uh *UserHandler) RegisterUser(ctx *gin.Context) {
 	uh.LoginUser(ctx)
 }
 
+// LoginUser - authenticate user and return token.
 func (uh *UserHandler) LoginUser(ctx *gin.Context) {
-	userReq := UserRequest{}
+	userReq := userRequest{}
 	err := ctx.ShouldBindBodyWithJSON(&userReq)
 	if err != nil {
 		uh.handleValidationError(ctx, err)

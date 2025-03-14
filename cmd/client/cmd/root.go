@@ -1,3 +1,4 @@
+// Package cmd contains cobra-commands for client app.
 package cmd
 
 import (
@@ -48,7 +49,7 @@ func init() {
 	{
 		pf.StringVarP(&appConfig.ConfigFile, "config", "c", appConfig.ConfigFile, "config filename")
 		pf.StringVarP(&appConfig.HostString, "address", "a", appConfig.HostString, "HTTP/gRPC server endpoint")
-		pf.BoolVarP(&appConfig.GRPC, "grpc", "g", appConfig.GRPC, "Enable gRPC Mode")
+		// pf.BoolVarP(&appConfig.GRPC, "grpc", "g", appConfig.GRPC, "Enable gRPC Mode")
 		pf.IntVarP(&appConfig.SyncIntervalSeconds, "sync", "s", appConfig.SyncIntervalSeconds, "Sync interval")
 		pf.StringVarP(&appConfig.App.LogLevel, "log", "l", appConfig.App.LogLevel, "Log level")
 
@@ -64,8 +65,4 @@ func init() {
 		log.Fatal(err)
 		return
 	}
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

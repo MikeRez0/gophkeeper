@@ -1,3 +1,4 @@
+// Package app contains client GophKeeper application.
 package app
 
 import (
@@ -21,10 +22,16 @@ import (
 	"go.uber.org/zap"
 )
 
+// ClientApp is the core object of client application.
+// It's consist of:
+//   - configuration parameters
+//   - cryptography objects (encrypter, decrypter)
+//   - local storage service
+//
+// Most usecases of app must instantiate the ClientApp, warm (bootstrap) it and then execute business logic.
 type ClientApp struct {
 	config       *config.ConfigClient
-	enc          *encrypter.Encrypter
-	dec          *encrypter.Decrypter
+	enc          *encrypter.Crypter
 	Log          *zap.Logger
 	httpClient   *http.Client
 	Service      port.IKeychainDataService
@@ -37,6 +44,7 @@ type ClientApp struct {
 
 const cKeySize = 32
 
+// NewApp creates new client app object.
 func NewApp(conf *config.ConfigClient, service port.IKeychainDataService, log *zap.Logger) (*ClientApp, error) {
 	caCertPool := x509.NewCertPool()
 	if conf.TLSCertFile != "" {
@@ -57,13 +65,9 @@ func NewApp(conf *config.ConfigClient, service port.IKeychainDataService, log *z
 		},
 	}
 
-	enc, err := encrypter.NewEncrypter(log, cKeySize)
+	enc, err := encrypter.NewCrypter(log, cKeySize)
 	if err != nil {
 		return nil, fmt.Errorf("error creating encrypter: %w", err)
-	}
-	dec, err := encrypter.NewDecrypter(log, cKeySize)
-	if err != nil {
-		return nil, fmt.Errorf("error creating decrypter: %w", err)
 	}
 
 	return &ClientApp{
@@ -72,17 +76,18 @@ func NewApp(conf *config.ConfigClient, service port.IKeychainDataService, log *z
 		Log:          log,
 		httpClient:   client,
 		enc:          enc,
-		dec:          dec,
 		Service:      service,
 		syncTime:     time.Time{},
 		UserID:       domain.UserID(0),
 	}, nil
 }
 
+// SetToken saves token for app.
 func (a *ClientApp) SetToken(token string) {
 	a.token = token
 }
 
+// Connect trys to connect to server, saves token if success.
 func (a *ClientApp) Connect(ctx context.Context, login, password string) error {
 	data, err := a.doRequest(ctx,
 		"/api/user/login",
@@ -105,6 +110,7 @@ func (a *ClientApp) Connect(ctx context.Context, login, password string) error {
 	return nil
 }
 
+// RegisterUser trys to register new user on server, saves token if success.
 func (a *ClientApp) RegisterUser(ctx context.Context, login, password string) error {
 	data, err := a.doRequest(ctx,
 		"/api/user/register",
@@ -127,6 +133,7 @@ func (a *ClientApp) RegisterUser(ctx context.Context, login, password string) er
 	return nil
 }
 
+// doRequest - common method for make request to server.
 func (a *ClientApp) doRequest(ctx context.Context, path string, method string, data any) ([]byte, error) {
 	requestStr := a.config.HostString + path
 
@@ -171,6 +178,7 @@ func (a *ClientApp) doRequest(ctx context.Context, path string, method string, d
 	return result, nil
 }
 
+// StoreSecret stores secret in keychain item. It uses pass for encrypting the secret.
 func (a *ClientApp) StoreSecret(item *keychain.KeychainItem, secret []byte, pass string) error {
 	// check pass for old secret
 	if oldSecret, err := a.GetSecret(item, pass); err != nil {
@@ -190,12 +198,13 @@ func (a *ClientApp) StoreSecret(item *keychain.KeychainItem, secret []byte, pass
 	return nil
 }
 
+// GetSecret reads secret from keychain item. It uses pass for decrypting secret value.
 func (a *ClientApp) GetSecret(item *keychain.KeychainItem, pass string) ([]byte, error) {
 	data := item.Data()
 	if len(data.Value) == 0 {
 		return data.Value, nil
 	}
-	secret, err := a.dec.Decrypt(&encrypter.Envelope{
+	secret, err := a.enc.Decrypt(&encrypter.Envelope{
 		Key:  data.Key,
 		Data: data.Value,
 	}, []byte(pass))
