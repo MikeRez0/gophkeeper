@@ -41,7 +41,7 @@ func (ki *KeychainItem) MetaData() domain.KeychainItemMeta {
 	return ki.data.MetaData
 }
 
-// MetaData returns meta data value with given name.
+// MetaDataItem returns meta data value with given name.
 func (ki *KeychainItem) MetaDataItem(key string) string {
 	if v, ok := ki.data.MetaData[key]; ok {
 		return v

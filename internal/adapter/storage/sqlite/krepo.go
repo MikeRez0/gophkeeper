@@ -16,7 +16,7 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 )
 
-// KeychainSqliteRepository stores data in sqlite3 database
+// KeychainSqliteRepository stores data in sqlite3 database.
 type KeychainSqliteRepository struct {
 	db  *DB
 	log *zap.Logger

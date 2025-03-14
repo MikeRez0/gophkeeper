@@ -1,4 +1,4 @@
-// Package logger contains logger for project
+// Package logger contains logger for project.
 package logger
 
 import (

@@ -16,13 +16,13 @@ import (
 	"github.com/MikeRez0/gophkeeper/internal/core/domain"
 )
 
-// KeychainPgRepository stores data in PostgreSQL database
+// KeychainPgRepository stores data in PostgreSQL database.
 type KeychainPgRepository struct {
 	db  *DB
 	log *zap.Logger
 }
 
-// NewKeychainPgRepository creates new KeychainPgRepository
+// NewKeychainPgRepository creates new KeychainPgRepository.
 func NewKeychainPgRepository(db *DB, log *zap.Logger) (*KeychainPgRepository, error) {
 	if db == nil || log == nil {
 		return nil, errors.New("nil not allowed as argument")

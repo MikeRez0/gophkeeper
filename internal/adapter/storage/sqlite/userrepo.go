@@ -16,7 +16,7 @@ type UserRepository struct {
 	log *zap.Logger
 }
 
-// NewUserRepository creates new user sqlite-repositiry
+// NewUserRepository creates new user sqlite-repositiry.
 func NewUserRepository(db *DB, log *zap.Logger) (*UserRepository, error) {
 	if db == nil {
 		return nil, errors.New("nil not allowed as database")
