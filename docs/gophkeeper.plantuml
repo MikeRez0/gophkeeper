@@ -1,0 +1,53 @@
+@startuml gophkeeper
+!pragma teoz true
+actor User as u
+participant Client as c
+database "Local store \n sqlite" as ls
+participant Server as s
+database "Cloud store \n PostgreSQL" as cs
+
+u -> c: keychain add
+& c->ls: save
+
+== Save item ==
+
+u->c: item store
+activate c
+u->c: secret
+u->c: password
+& c->c: encrypt secret
+c->ls: save item, encrypted secret
+deactivate c
+
+== Show item ==
+
+u->c: item show
+activate c
+c->ls: get item
+ls-->c: item, encrypted secret
+u->c: password
+& c->c: decrypt secret
+c->u: secret
+deactivate c
+
+== Synchronization ==
+?-->c: sync timer
+activate c
+c->s: fetch keychains
+s-->c
+loop for every keychain
+c -> ls: get items \n [client_ts] >= synctime
+ls -->c
+c->s: new/changed local items
+activate s
+loop items
+s->cs: upsert items
+end loop items
+s-->c: new/changed cloud items
+deactivate s
+c->ls: store fetched items
+deactivate c
+end 'loop
+
+
+@enduml
